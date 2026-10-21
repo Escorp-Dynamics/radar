@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Общая часть приложения: модели, движок, карта, интерфейс. Головы — Radar (десктоп) и Radar.Android -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Radar</RootNamespace>
+    <AssemblyName>Radar.Core</AssemblyName>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/Fonts/*.ttf" />
+    <AvaloniaResource Include="Assets/radar.png" />
+    <EmbeddedResource Include="Assets/basemap.bin.gz" LogicalName="Radar.basemap.bin.gz" />
+    <EmbeddedResource Include="Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" />
+    <EmbeddedResource Include="Assets/labels.bin.gz" LogicalName="Radar.labels.bin.gz" />
+    <EmbeddedResource Include="Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" Condition="Exists('Assets/routes.bin.gz')" />
+    <EmbeddedResource Include="Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" Condition="Exists('Assets/roadgraph.bin.gz')" />
+    <EmbeddedResource Include="Assets/replay.tsv.gz" LogicalName="Radar.replay.tsv.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <!-- карта рисуется напрямую через Skia (пути, шейдеры) -->
+    <PackageReference Include="Avalonia.Skia" Version="12.1.3" />
+    <!-- ротатор бесплатных прокси (фреймворк Atom, пакеты в ../packages): Telegram без VPN там, где t.me заблокирован -->
+    <PackageReference Include="Escorp.Atom.Web.Services.Proxies" Version="0.0.1" />
+    <!-- зависимости Atom ссылаются на 0.10.3, а собраны против 0.10.4 — версия закреплена явно -->
+    <PackageReference Include="Escorp.Atom" Version="0.10.4" />
+  </ItemGroup>
+</Project>

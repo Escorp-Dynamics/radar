@@ -1,0 +1,478 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="using:Radar.Views"
+             x:Class="Radar.App"
+             RequestedThemeVariant="Dark">
+    <Application.Resources>
+        <!-- ===== Палитра прибора для стандартных элементов Fluent: прямые углы, тёмное стекло, голубой акцент ===== -->
+        <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
+        <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
+        <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+        <!-- поле ввода -->
+        <SolidColorBrush x:Key="TextControlBackground" Color="#59000000" />
+        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#73000000" />
+        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#8C000000" />
+        <SolidColorBrush x:Key="TextControlBorderBrush" Color="#1FFFFFFF" />
+        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#807CD4FF" />
+        <SolidColorBrush x:Key="TextControlForeground" Color="#DDE3EA" />
+        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#DDE3EA" />
+        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#5C6878" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6A7686" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#4C5766" />
+        <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#667CD4FF" />
+        <SolidColorBrush x:Key="TextControlButtonForeground" Color="#8C97A7" />
+        <SolidColorBrush x:Key="TextControlButtonForegroundPointerOver" Color="#BDE9FF" />
+        <SolidColorBrush x:Key="TextControlButtonForegroundPressed" Color="#7CD4FF" />
+        <SolidColorBrush x:Key="TextControlButtonBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="TextControlButtonBackgroundPointerOver" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="TextControlButtonBackgroundPressed" Color="#267CD4FF" />
+        <SolidColorBrush x:Key="TextControlButtonBorderBrush" Color="Transparent" />
+        <SolidColorBrush x:Key="TextControlButtonBorderBrushPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TextControlButtonBorderBrushPressed" Color="Transparent" />
+        <!-- выпадающий список: плоское тёмное стекло, акцент — янтарный, как у выбора месяца -->
+        <SolidColorBrush x:Key="ComboBoxBackground" Color="#0FFFFFFF" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#267CD4FF" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="#0FFFFFFF" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="#08FFFFFF" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="#1AFFFFFF" />
+        <Thickness x:Key="ComboBoxBorderThemeThickness">0,0,0,1</Thickness>
+        <SolidColorBrush x:Key="ComboBoxForeground" Color="#DDE6EF" />
+        <SolidColorBrush x:Key="ComboBoxForegroundFocused" Color="#DDE6EF" />
+        <SolidColorBrush x:Key="ComboBoxForegroundFocusedPressed" Color="#DDE6EF" />
+        <SolidColorBrush x:Key="ComboBoxForegroundDisabled" Color="#5C6878" />
+        <SolidColorBrush x:Key="ComboBoxPlaceHolderForeground" Color="#6A7686" />
+        <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="#8C97A7" />
+        <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocused" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocusedPressed" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundDisabled" Color="#5C6878" />
+        <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#F20A0D12" />
+        <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#33FFFFFF" />
+        <Thickness x:Key="ComboBoxDropdownBorderThickness">1</Thickness>
+        <Thickness x:Key="ComboBoxDropdownBorderPadding">0</Thickness>
+        <SolidColorBrush x:Key="ComboBoxItemBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="#2A7CD4FF" />
+        <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#14F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#1F7CD4FF" />
+        <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed" Color="#2A7CD4FF" />
+        <SolidColorBrush x:Key="ComboBoxItemBorderBrushPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ComboBoxItemBorderBrushPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelected" Color="Transparent" />
+        <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelectedPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelectedPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#C8D0DB" />
+        <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="ComboBoxItemForegroundPressed" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPointerOver" Color="#F2C14E" />
+        <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPressed" Color="#F2C14E" />
+        <!-- поле даты и календарь: то же тёмное стекло, выбранный день — янтарный -->
+        <SolidColorBrush x:Key="CalendarDatePickerBackground" Color="#0FFFFFFF" />
+        <SolidColorBrush x:Key="CalendarDatePickerBackgroundPointerOver" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="CalendarDatePickerBackgroundPressed" Color="#267CD4FF" />
+        <SolidColorBrush x:Key="CalendarDatePickerBackgroundFocused" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="CalendarDatePickerBorderBrush" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="CalendarDatePickerBorderBrushPointerOver" Color="#F2C14E" />
+        <SolidColorBrush x:Key="CalendarDatePickerBorderBrushPressed" Color="#F2C14E" />
+        <Thickness x:Key="CalendarDatePickerBorderThemeThickness">0,0,0,1</Thickness>
+        <SolidColorBrush x:Key="CalendarDatePickerForeground" Color="#DDE6EF" />
+        <SolidColorBrush x:Key="CalendarDatePickerTextForeground" Color="#DDE6EF" />
+        <SolidColorBrush x:Key="CalendarDatePickerTextForegroundSelected" Color="#DDE6EF" />
+        <SolidColorBrush x:Key="CalendarDatePickerCalendarGlyphForeground" Color="#8C97A7" />
+        <SolidColorBrush x:Key="CalendarViewBackground" Color="#F20A0D12" />
+        <SolidColorBrush x:Key="CalendarViewBorderBrush" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="CalendarViewForeground" Color="#C8D0DB" />
+        <SolidColorBrush x:Key="CalendarViewCalendarItemForeground" Color="#C8D0DB" />
+        <SolidColorBrush x:Key="CalendarViewOutOfScopeForeground" Color="#4C5766" />
+        <SolidColorBrush x:Key="CalendarViewOutOfScopeBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="CalendarViewBlackoutForeground" Color="#3A4452" />
+        <SolidColorBrush x:Key="CalendarViewWeekDayForegroundDisabled" Color="#6A7686" />
+        <SolidColorBrush x:Key="CalendarViewTodayForeground" Color="#7CD4FF" />
+        <SolidColorBrush x:Key="CalendarViewSelectedBorderBrush" Color="#F2C14E" />
+        <SolidColorBrush x:Key="CalendarViewSelectedHoverBorderBrush" Color="#F2C14E" />
+        <SolidColorBrush x:Key="CalendarViewSelectedPressedBorderBrush" Color="#F2C14E" />
+        <SolidColorBrush x:Key="CalendarViewHoverBorderBrush" Color="#807CD4FF" />
+        <SolidColorBrush x:Key="CalendarViewPressedBorderBrush" Color="#7CD4FF" />
+        <SolidColorBrush x:Key="CalendarViewCalendarItemRevealBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="CalendarViewCalendarItemRevealBorderBrush" Color="Transparent" />
+        <SolidColorBrush x:Key="CalendarViewNavigationButtonBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="CalendarViewNavigationButtonBorderBrush" Color="Transparent" />
+        <SolidColorBrush x:Key="CalendarViewNavigationButtonBorderBrushPointerOver" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="CalendarViewNavigationButtonForegroundPointerOver" Color="#F2C14E" />
+        <SolidColorBrush x:Key="CalendarViewNavigationButtonForegroundPressed" Color="#F2C14E" />
+        <!-- всплывающие подсказки -->
+        <SolidColorBrush x:Key="ToolTipBackground" Color="#F20A0D12" />
+        <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="ToolTipForeground" Color="#C8D0DB" />
+        <Thickness x:Key="ToolTipBorderThemeThickness">1</Thickness>
+        <Thickness x:Key="ToolTipBorderThemePadding">10,6,10,7</Thickness>
+        <x:Double x:Key="ToolTipContentThemeFontSize">11.5</x:Double>
+        <x:Double x:Key="ToolTipContentMaxWidth">340</x:Double>
+        <!-- вкладки -->
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselected" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="#5C6878" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="#A9B4C2" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPressed" Color="#7CD4FF" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#7CD4FF" />
+        <!-- кнопки и переключатели без собственного класса -->
+        <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#127CD4FF" />
+        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#1F7CD4FF" />
+        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#1FFFFFFF" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#4A5564" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#807CD4FF" />
+        <SolidColorBrush x:Key="ButtonForeground" Color="#B4BECB" />
+        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ToggleButtonBackgroundPressed" Color="#127CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#267CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#337CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="#1FFFFFFF" />
+        <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="#4A5564" />
+        <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed" Color="#807CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="#807CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="#B37CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="#B37CD4FF" />
+        <SolidColorBrush x:Key="ToggleButtonForeground" Color="#6B7584" />
+        <SolidColorBrush x:Key="ToggleButtonForegroundPointerOver" Color="#A9B4C2" />
+        <SolidColorBrush x:Key="ToggleButtonForegroundPressed" Color="#DDE3EA" />
+        <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#E6F6FF" />
+        <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#FFFFFF" />
+        <!-- контекстное меню поля ввода -->
+        <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#F20A0D12" />
+        <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#33FFFFFF" />
+        <Thickness x:Key="MenuFlyoutPresenterBorderThemeThickness">1</Thickness>
+        <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="#267CD4FF" />
+        <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="#C8D0DB" />
+        <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="#EEF3F8" />
+        <SolidColorBrush x:Key="MenuFlyoutItemKeyboardAcceleratorTextForeground" Color="#5C6878" />
+        <!-- строки списков -->
+        <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="#127CD4FF" />
+        <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="#1A7CD4FF" />
+        <SolidColorBrush x:Key="SystemControlHighlightListAccentHighBrush" Color="#267CD4FF" />
+        <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#0DFFFFFF" />
+        <SolidColorBrush x:Key="SystemControlHighlightListMediumBrush" Color="#14FFFFFF" />
+        <!-- рамка фокуса с клавиатуры -->
+        <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#997CD4FF" />
+        <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="Transparent" />
+        <!-- курсор ввода и выделение текста -->
+        <Color x:Key="SystemAccentColor">#7CD4FF</Color>
+        <Color x:Key="SystemAccentColorLight1">#9FE0FF</Color>
+        <Color x:Key="SystemAccentColorLight2">#BDE9FF</Color>
+        <Color x:Key="SystemAccentColorLight3">#DDF4FF</Color>
+        <Color x:Key="SystemAccentColorDark1">#4FA9D8</Color>
+        <Color x:Key="SystemAccentColorDark2">#2F7FAD</Color>
+        <Color x:Key="SystemAccentColorDark3">#1C5579</Color>
+
+        <!-- Полоса прокрутки прибора: без стрелок и подложки, тонкая риска у края; при наведении — чуть шире и ярче, без скачка -->
+        <SolidColorBrush x:Key="ScrollViewerScrollBarsSeparatorBackground" Color="Transparent" />
+        <!-- выпадающий список в стиле панелей: срезанные углы, волосяная кромка, засечка; всплывающий список — стекло -->
+        <ControlTheme x:Key="{x:Type ComboBox}" TargetType="ComboBox">
+            <Setter Property="Background" Value="#0AFFFFFF" />
+            <Setter Property="BorderBrush" Value="#3A4654" />
+            <Setter Property="Foreground" Value="#DDE6EF" />
+            <Setter Property="Padding" Value="12,0,8,0" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="MaxDropDownHeight" Value="360" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel>
+                        <v:HudFrame Name="frame" Fill="{TemplateBinding Background}" Stroke="{TemplateBinding BorderBrush}" Accent="#F2C14E" Chamfer="6" />
+                        <Grid ColumnDefinitions="*,Auto" Margin="{TemplateBinding Padding}">
+                            <TextBlock Name="PlaceholderTextBlock" Text="{TemplateBinding PlaceholderText}" Foreground="#6A7686" VerticalAlignment="Center"
+                                       IsVisible="{TemplateBinding SelectionBoxItem, Converter={x:Static ObjectConverters.IsNull}}" />
+                            <ContentControl Name="ContentPresenter" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding ItemTemplate}"
+                                            Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                            <Path Grid.Column="1" Name="DropDownGlyph" Width="8" Height="5" Stretch="Uniform" Stroke="#8C97A7" StrokeThickness="1.4"
+                                  StrokeLineCap="Round" StrokeJoin="Round" Data="M0 0 L4 4 L8 0" Margin="10,0,2,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                                <Path.Transitions><Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut" /></Transitions></Path.Transitions>
+                            </Path>
+                        </Grid>
+                        <Popup Name="PART_Popup" WindowManagerAddShadowHint="False" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
+                               MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                               PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" Placement="BottomEdgeAlignedLeft" VerticalOffset="4"
+                               IsLightDismissEnabled="True" InheritsTransform="True">
+                            <v:GlassPanel Chamfer="7" Tint="#F207090D" Padding="0,4">
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                </ScrollViewer>
+                            </v:GlassPanel>
+                        </Popup>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#1A7CD4FF" />
+                <Setter Property="BorderBrush" Value="#7CD4FF" />
+            </Style>
+            <Style Selector="^:pointerover /template/ Path#DropDownGlyph">
+                <Setter Property="Stroke" Value="#EEF3F8" />
+            </Style>
+            <Style Selector="^:dropdownopen">
+                <Setter Property="BorderBrush" Value="#F2C14E" />
+                <Setter Property="Background" Value="#14F2C14E" />
+            </Style>
+            <Style Selector="^:dropdownopen /template/ Path#DropDownGlyph">
+                <Setter Property="Stroke" Value="#F2C14E" />
+                <Setter Property="RenderTransform" Value="rotate(180deg)" />
+            </Style>
+            <Style Selector="^:focus-visible">
+                <Setter Property="BorderBrush" Value="#7CD4FF" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Opacity" Value="0.45" />
+            </Style>
+        </ControlTheme>
+        <ControlTheme x:Key="{x:Type ComboBoxItem}" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#C8D0DB" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel Background="{TemplateBinding Background}">
+                        <Rectangle Name="mark" Width="2" HorizontalAlignment="Left" Fill="#F2C14E" IsVisible="False" />
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}" VerticalContentAlignment="Center"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#1A7CD4FF" />
+                <Setter Property="Foreground" Value="#EEF3F8" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="#2A7CD4FF" />
+            </Style>
+            <Style Selector="^:selected">
+                <Setter Property="Background" Value="#12F2C14E" />
+                <Setter Property="Foreground" Value="#F2C14E" />
+            </Style>
+            <Style Selector="^:selected /template/ Rectangle#mark">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+        </ControlTheme>
+        <!-- флажок в стиле панелей: квадрат со срезанным углом и волосяной кромкой; отмечен — голубая заливка и галочка -->
+        <ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#B4BECB" />
+            <Setter Property="Padding" Value="10,0,0,0" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid ColumnDefinitions="Auto,*" Background="{TemplateBinding Background}">
+                        <Panel Width="16" Height="16" VerticalAlignment="Center">
+                            <v:HudFrame Name="box" Fill="#0AFFFFFF" Stroke="#4A5664" Chamfer="4" />
+                            <Path Name="mark" Width="9" Height="7" Stretch="Uniform" Stroke="#07090D" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                                  Data="M0 3.5 L3 6.5 L9 0.5" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" />
+                            <Rectangle Name="dash" Width="8" Height="2" Fill="#7CD4FF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+                        </Panel>
+                        <ContentPresenter Grid.Column="1" Name="content" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Margin="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" HorizontalAlignment="Stretch" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^ /template/ Path#mark">
+                <Setter Property="Transitions"><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.12" /></Transitions></Setter>
+            </Style>
+            <Style Selector="^:pointerover /template/ v|HudFrame#box">
+                <Setter Property="Stroke" Value="#7CD4FF" />
+                <Setter Property="Fill" Value="#1A7CD4FF" />
+            </Style>
+            <Style Selector="^:checked /template/ v|HudFrame#box">
+                <Setter Property="Fill" Value="#7CD4FF" />
+                <Setter Property="Stroke" Value="#BDE9FF" />
+            </Style>
+            <Style Selector="^:checked /template/ Path#mark">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <Style Selector="^:checked">
+                <Setter Property="Foreground" Value="#E6F6FF" />
+            </Style>
+            <Style Selector="^:indeterminate /template/ Rectangle#dash">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="^:focus-visible /template/ v|HudFrame#box">
+                <Setter Property="Stroke" Value="#E6F6FF" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Opacity" Value="0.45" />
+            </Style>
+        </ControlTheme>
+        <ControlTheme x:Key="RadarScrollThumb" TargetType="Thumb">
+            <Setter Property="Background" Value="#38FFFFFF" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" />
+                </ControlTemplate>
+            </Setter>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.15" Easing="CubicEaseOut" />
+                    <DoubleTransition Property="Height" Duration="0:0:0.15" Easing="CubicEaseOut" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#997CD4FF" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="#CC7CD4FF" />
+            </Style>
+        </ControlTheme>
+        <ControlTheme x:Key="RadarScrollPage" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+        <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <!-- скрыта, пока блок не листают и курсор не над ним (см. ScrollViewer-стили и App.ScrollReveal) -->
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.35" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+            <Style Selector="^:vertical">
+                <Setter Property="Width" Value="14" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Background="{TemplateBinding Background}">
+                            <Track Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                   Value="{TemplateBinding Value, Mode=TwoWay}" ViewportSize="{TemplateBinding ViewportSize}"
+                                   DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+                                   Orientation="Vertical" IsDirectionReversed="True">
+                                <Track.DecreaseButton>
+                                    <RepeatButton Name="PART_PageUpButton" Theme="{StaticResource RadarScrollPage}" />
+                                </Track.DecreaseButton>
+                                <Track.IncreaseButton>
+                                    <RepeatButton Name="PART_PageDownButton" Theme="{StaticResource RadarScrollPage}" />
+                                </Track.IncreaseButton>
+                                <Thumb Theme="{StaticResource RadarScrollThumb}" Width="2" MinHeight="24" CornerRadius="1"
+                                       HorizontalAlignment="Center" Margin="0,2" />
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^:horizontal">
+                <Setter Property="Height" Value="14" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Background="{TemplateBinding Background}">
+                            <Track Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                   Value="{TemplateBinding Value, Mode=TwoWay}" ViewportSize="{TemplateBinding ViewportSize}"
+                                   DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+                                   Orientation="Horizontal">
+                                <Track.DecreaseButton>
+                                    <RepeatButton Name="PART_PageUpButton" Theme="{StaticResource RadarScrollPage}" />
+                                </Track.DecreaseButton>
+                                <Track.IncreaseButton>
+                                    <RepeatButton Name="PART_PageDownButton" Theme="{StaticResource RadarScrollPage}" />
+                                </Track.IncreaseButton>
+                                <Thumb Theme="{StaticResource RadarScrollThumb}" Height="2" MinWidth="24" CornerRadius="1"
+                                       VerticalAlignment="Center" Margin="2,0" />
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^:vertical[IsExpanded=true] /template/ Thumb">
+                <Setter Property="Width" Value="4" />
+                <Setter Property="CornerRadius" Value="2" />
+                <Setter Property="Background" Value="#66FFFFFF" />
+            </Style>
+            <Style Selector="^:horizontal[IsExpanded=true] /template/ Thumb">
+                <Setter Property="Height" Value="4" />
+                <Setter Property="CornerRadius" Value="2" />
+                <Setter Property="Background" Value="#66FFFFFF" />
+            </Style>
+            <Style Selector="^[IsExpanded=true] /template/ Thumb:pointerover">
+                <Setter Property="Background" Value="#997CD4FF" />
+            </Style>
+            <Style Selector="^ /template/ Thumb:pressed">
+                <Setter Property="Background" Value="#CC7CD4FF" />
+            </Style>
+        </ControlTheme>
+    </Application.Resources>
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="CalendarDatePicker.range">
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="Width" Value="122" />
+            <Setter Property="Padding" Value="8,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- всё кликабельное — курсор-указатель -->
+        <Style Selector="Button, ToggleButton, RepeatButton, TabItem, ListBoxItem, MenuItem, ComboBox, CheckBox, RadioButton, CalendarDatePicker">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <!-- полоса прокрутки проявляется при наведении на листаемый блок или во время прокрутки -->
+        <Style Selector="ScrollViewer:pointerover /template/ ScrollBar">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ScrollViewer.scrolling /template/ ScrollBar">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <!-- подсказки: моноширинные цифры не нужны, но разрядка и стекло — как у панелей -->
+        <Style Selector="ToolTip">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- контекстное меню поля ввода по-русски -->
+        <Style Selector="TextBox">
+            <Setter Property="SelectionBrush" Value="#667CD4FF" />
+            <Setter Property="CaretBrush" Value="#7CD4FF" />
+            <Setter Property="ContextFlyout">
+                <MenuFlyout>
+                    <MenuItem Header="Вырезать" Command="{Binding $parent[TextBox].Cut}" IsEnabled="{Binding $parent[TextBox].CanCut}" InputGesture="Ctrl+X" />
+                    <MenuItem Header="Копировать" Command="{Binding $parent[TextBox].Copy}" IsEnabled="{Binding $parent[TextBox].CanCopy}" InputGesture="Ctrl+C" />
+                    <MenuItem Header="Вставить" Command="{Binding $parent[TextBox].Paste}" IsEnabled="{Binding $parent[TextBox].CanPaste}" InputGesture="Ctrl+V" />
+                </MenuFlyout>
+            </Setter>
+        </Style>
+    </Application.Styles>
+</Application>

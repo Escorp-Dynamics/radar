@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Без фонового VBCSCompiler: он переживает сборку и держит унаследованные блокировки (flock), из-за чего следующие сборки виснут -->
+    <UseSharedCompilation>false</UseSharedCompilation>
+    <!-- Версия приложения; релизная сборка в CI — RadarVersionBase + номер сборки (тег vX.Y.N, -p:Version=…) -->
+    <RadarVersionBase>1.0</RadarVersionBase>
+    <Version Condition="'$(Version)' == ''">$(RadarVersionBase).0</Version>
+    <Company>Escorp Dynamics</Company>
+    <Product>Радар</Product>
+  </PropertyGroup>
+</Project>

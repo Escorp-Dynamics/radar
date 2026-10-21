@@ -1,0 +1,77 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build (Release)",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/Radar/Radar.csproj",
+                "-c",
+                "Release",
+                "-p:Optimize=true",
+                "-p:DebugType=portable",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/Radar/Radar.csproj",
+                "-c",
+                "Debug",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
+        },
+        {
+            "label": "publish (NativeAOT)",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "${workspaceFolder}/Radar/Radar.csproj",
+                "-c",
+                "Release",
+                "-r",
+                "linux-x64",
+                "-o",
+                "${workspaceFolder}/out"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run (NativeAOT)",
+            "type": "process",
+            "command": "${workspaceFolder}/out/Radar",
+            "options": {
+                "cwd": "${workspaceFolder}/out"
+            },
+            "dependsOn": "publish (NativeAOT)",
+            "problemMatcher": []
+        },
+        {
+            "label": "test (parser gold set)",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Radar.Tests/Radar.Tests.csproj"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "test"
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Radar.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Логика разбора без UI: подключаем исходники напрямую, чтобы не тянуть Avalonia в тесты -->
+  <ItemGroup>
+    <Compile Include="../Radar.Core/Models/*.cs" Link="Src/Models/%(Filename)%(Extension)" />
+    <Compile Include="../Radar.Core/Services/*.cs" Link="Src/Services/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../Radar.Core/Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" />
+    <EmbeddedResource Include="../Radar.Core/Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" Condition="Exists('../Radar.Core/Assets/routes.bin.gz')" />
+    <EmbeddedResource Include="../Radar.Core/Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" Condition="Exists('../Radar.Core/Assets/roadgraph.bin.gz')" />
+    <EmbeddedResource Include="../Radar.Core/Assets/basemap.bin.gz" LogicalName="Radar.basemap.bin.gz" />
+    <!-- срез открытых данных DeepStateMap (полигоны «окуповано», упрощены) — проверка извлечения линии соприкосновения -->
+    <None Include="Data/front_sample.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 12 сообщений архива — офлайн-снимок окна (UiSnapshotTests) -->
+    <None Include="Data/ui_corpus.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <!-- TelegramRoute (Services) использует ротатор прокси Atom -->
+    <PackageReference Include="Escorp.Atom.Web.Services.Proxies" Version="0.0.1" />
+    <PackageReference Include="Escorp.Atom" Version="0.10.4" />
+  </ItemGroup>
+</Project>
