@@ -1,0 +1,63 @@
+# Ежедневное обновление архива сообщений: прежний архив из релиза «archive» → докачка новых сообщений каналов (t.me/s)
+# → упаковка → проверка → загрузка изменившихся месяцев и манифеста. Приложение докачивает их само.
+name: archive
+
+on:
+  schedule:
+    - cron: '17 1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: archive
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - name: build tool
+        run: dotnet build Radar/Radar.csproj -c Release -o tool
+      - name: download current archive
+        run: |
+          mkdir -p pack
+          gh release download archive --repo "$GITHUB_REPOSITORY" --dir pack --pattern '*' || echo "релиза archive ещё нет — полная докачка"
+          ls pack | wc -l
+      - name: unpack
+        run: |
+          if [ -f pack/manifest.json ]; then dotnet tool/Radar.dll --archive-unpack pack raw; else mkdir -p raw; fi
+          cp pack/manifest.json manifest.before.json 2>/dev/null || echo '{}' > manifest.before.json
+      - name: fetch new messages
+        run: dotnet tool/Radar.dll --archive-fetch raw
+      - name: pack & verify
+        run: |
+          dotnet tool/Radar.dll --archive-pack raw pack
+          dotnet tool/Radar.dll --archive-verify pack
+      - name: upload changed months
+        run: |
+          if ! gh release view archive --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create archive --repo "$GITHUB_REPOSITORY" --latest=false --prerelease \
+              --title "Архив сообщений" --notes "Помесячный архив сообщений каналов тревог (manifest.json + YYYY-MM.*.tsv.gz). Обновляется ежедневно автоматически."
+          fi
+          existing=$(gh release view archive --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+          for f in pack/*.tsv.gz; do
+            n=$(basename "$f")
+            grep -qxF "$n" <<<"$existing" || gh release upload archive "$f" --repo "$GITHUB_REPOSITORY"
+          done
+          # манифест — последним: клиенты видят новые месяцы, только когда их пакеты уже загружены
+          gh release upload archive pack/manifest.json --repo "$GITHUB_REPOSITORY" --clobber
+          keep=$(cd pack && ls *.tsv.gz manifest.json)
+          for n in $existing; do
+            grep -qxF "$n" <<<"$keep" || gh release delete-asset archive "$n" --repo "$GITHUB_REPOSITORY" --yes
+          done

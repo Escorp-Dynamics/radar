@@ -1,0 +1,28 @@
+# сборка
+bin/
+obj/
+out/
+publish/
+publish-*/
+*.apk
+*.aab
+*.zip
+*.tar.gz
+*.dbg
+*.pdb
+
+# архив сообщений и отчёты — публикуются релизом «archive», не в репозитории
+artifacts/archive/
+artifacts/archive-pack/
+artifacts/validation/
+artifacts/*.json
+
+# локальное
+.vscode/settings.json
+.idea/
+*.user
+*.swp
+__pycache__/
+*.keystore
+*.jks
+.github/instructions/

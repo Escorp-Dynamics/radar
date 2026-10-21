@@ -1,0 +1,95 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Radar (Release, оптимизации)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build (Release)",
+            "program": "${workspaceFolder}/Radar/bin/Release/net10.0/Radar.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Radar",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "justMyCode": false,
+            "suppressJITOptimizations": false
+        },
+        {
+            "name": "Radar (Release: демо-неделя, 1 мин = 1 ч)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build (Release)",
+            "program": "${workspaceFolder}/Radar/bin/Release/net10.0/Radar.dll",
+            "args": [
+                "--replay"
+            ],
+            "cwd": "${workspaceFolder}/Radar",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "justMyCode": false,
+            "suppressJITOptimizations": false
+        },
+        {
+            "name": "Radar (Release: Demo-сценарий)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build (Release)",
+            "program": "${workspaceFolder}/Radar/bin/Release/net10.0/Radar.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Radar",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "justMyCode": false,
+            "suppressJITOptimizations": false,
+            "env": {
+                "RADAR_DEMO": "1"
+            }
+        },
+        {
+            "name": "Radar (NativeAOT, без отладчика)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "${workspaceFolder}/out/Radar",
+            "cwd": "${workspaceFolder}/out",
+            "preLaunchTask": "publish (NativeAOT)"
+        },
+        {
+            "name": "Radar (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Radar/bin/Debug/net10.0/Radar.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Radar",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Radar (Debug: Демо: неделя, 1 мин = 1 ч)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Radar/bin/Debug/net10.0/Radar.dll",
+            "args": [
+                "--replay"
+            ],
+            "cwd": "${workspaceFolder}/Radar",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Radar (Debug: Demo-сценарий)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Radar/bin/Debug/net10.0/Radar.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Radar",
+            "env": {
+                "RADAR_DEMO": "1"
+            },
+            "console": "internalConsole",
+            "stopAtEntry": false
+        }
+    ]
+}

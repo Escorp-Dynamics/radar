@@ -1,0 +1,207 @@
+# Сборка и релиз: каждый пуш в main — тесты, NativeAOT-сборки (Linux, Windows, macOS; x64 и arm64) и Android, релиз vX.Y.N (N — номер запуска).
+# Клиенты находят его через api.github.com/…/releases/latest (вкладка «Настройки» → «Проверить»).
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          base=$(sed -n 's:.*<RadarVersionBase>\(.*\)</RadarVersionBase>.*:\1:p' Directory.Build.props)
+          echo "version=$base.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      # снимковый тест окна рендерит через X11 — на раннере виртуальный дисплей
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+      - run: xvfb-run -a dotnet test --project Radar.Tests -c Release
+
+  desktop:
+    needs: [version, test]
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: ubuntu-24.04-arm, rid: linux-arm64 }
+          - { os: windows-latest, rid: win-x64 }
+          - { os: windows-11-arm, rid: win-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - name: publish (NativeAOT)
+        run: dotnet publish Radar/Radar.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version=${{ needs.version.outputs.version }}
+      - name: package (linux)
+        if: runner.os == 'Linux'
+        run: |
+          rm -f out/*.dbg
+          tar -C out -czf Radar-${{ needs.version.outputs.version }}-${{ matrix.rid }}.tar.gz .
+      - name: package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item out/*.pdb -ErrorAction SilentlyContinue
+          Compress-Archive -Path out/* -DestinationPath Radar-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip
+      - name: package (macos)
+        if: runner.os == 'macOS'
+        run: |
+          # приложение-бандл: двойной клик в Finder; без подписи Apple — первый запуск через «Открыть» в контекстном меню
+          app="Радар.app"; v=${{ needs.version.outputs.version }}
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          rm -rf out/*.dSYM out/*.dbg
+          cp -R out/* "$app/Contents/MacOS/"
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleName</key><string>Радар</string>
+            <key>CFBundleIdentifier</key><string>ru.escorp.radar</string>
+            <key>CFBundleExecutable</key><string>Radar</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$v</string>
+            <key>CFBundleVersion</key><string>$v</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          sed -i '' 's/^          //' "$app/Contents/Info.plist"
+          codesign --force --deep -s - "$app"
+          ditto -c -k --keepParent "$app" Radar-$v-${{ matrix.rid }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.rid }}
+          path: Radar-*.*
+          if-no-files-found: error
+
+  android:
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - run: dotnet workload install android
+      - name: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/radar.keystore"
+            echo "RADAR_KEYSTORE=$RUNNER_TEMP/radar.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::ANDROID_KEYSTORE_B64 не задан — APK подписан debug-ключом"
+          fi
+      - name: publish apk
+        env:
+          RADAR_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: >
+          dotnet publish Radar.Android/Radar.Android.csproj -c Release -o out
+          -p:Version=${{ needs.version.outputs.version }}
+          -p:ApplicationVersion=${{ github.run_number }}
+          -p:AndroidSdkDirectory=$ANDROID_SDK_ROOT
+      - run: cp "$(ls out/*-Signed.apk | head -1)" Radar-${{ needs.version.outputs.version }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: Radar-*.apk
+          if-no-files-found: error
+
+  release:
+    needs: [version, desktop, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - name: publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          gh release create "v$V" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Радар $V" \
+            --notes "Сборка $V (NativeAOT). Windows и macOS — zip, Linux — tar.gz (x64 и arm64), Android — apk. macOS: сборка без нотаризации Apple — первый запуск через «Открыть» в контекстном меню. Архив сообщений обновляется отдельно (релиз «archive») и загружается приложением автоматически."
+
+  # macOS-раннеры GitHub бывают в очереди десятки минут — релиз их не ждёт, файлы дописываются в него следом
+  macos:
+    needs: [version, release]
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - { rid: osx-arm64 }
+          - { rid: osx-x64 }
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - name: publish (NativeAOT)
+        run: dotnet publish Radar/Radar.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version=${{ needs.version.outputs.version }}
+      - name: package (linux)
+        if: runner.os == 'Linux'
+        run: |
+          rm -f out/*.dbg
+          tar -C out -czf Radar-${{ needs.version.outputs.version }}-${{ matrix.rid }}.tar.gz .
+      - name: package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item out/*.pdb -ErrorAction SilentlyContinue
+          Compress-Archive -Path out/* -DestinationPath Radar-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip
+      - name: package (macos)
+        if: runner.os == 'macOS'
+        run: |
+          # приложение-бандл: двойной клик в Finder; без подписи Apple — первый запуск через «Открыть» в контекстном меню
+          app="Радар.app"; v=${{ needs.version.outputs.version }}
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          rm -rf out/*.dSYM out/*.dbg
+          cp -R out/* "$app/Contents/MacOS/"
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleName</key><string>Радар</string>
+            <key>CFBundleIdentifier</key><string>ru.escorp.radar</string>
+            <key>CFBundleExecutable</key><string>Radar</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$v</string>
+            <key>CFBundleVersion</key><string>$v</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          sed -i '' 's/^          //' "$app/Contents/Info.plist"
+          codesign --force --deep -s - "$app"
+          ditto -c -k --keepParent "$app" Radar-$v-${{ matrix.rid }}.zip
+      - name: add to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${{ needs.version.outputs.version }}" Radar-*.zip --repo "$GITHUB_REPOSITORY" --clobber

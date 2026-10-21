@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <!-- Android 8.0+: каналы уведомлений, фоновые службы переднего плана -->
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Radar.Android</RootNamespace>
+    <ApplicationId>ru.escorp.radar</ApplicationId>
+    <ApplicationTitle>Радар</ApplicationTitle>
+    <!-- код версии растёт с каждой сборкой CI (номер запуска), отображаемая — из тега релиза -->
+    <ApplicationVersion Condition="'$(ApplicationVersion)' == ''">1</ApplicationVersion>
+    <ApplicationDisplayVersion Condition="'$(ApplicationDisplayVersion)' == ''">$(Version)</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- та же культура, что у десктопа: форматирование не зависит от локали телефона -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- телефоны и эмуляторы: ARM64 и x86_64 -->
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == '' And Exists('$(HOME)/Android/sdk')">$(HOME)/Android/sdk</AndroidSdkDirectory>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' And Exists('$(HOME)/Android/jdk')">$(HOME)/Android/jdk</JavaSdkDirectory>
+  </PropertyGroup>
+
+  <!-- подпись релиза: хранилище ключей передаётся CI из секретов (RADAR_KEYSTORE…), локально — debug-ключ -->
+  <PropertyGroup Condition="'$(RADAR_KEYSTORE)' != ''">
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>$(RADAR_KEYSTORE)</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>radar</AndroidSigningKeyAlias>
+    <AndroidSigningStorePass>env:RADAR_KEYSTORE_PASS</AndroidSigningStorePass>
+    <AndroidSigningKeyPass>env:RADAR_KEYSTORE_PASS</AndroidSigningKeyPass>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- полный тримминг (Avalonia и Atom помечены как совместимые) и AOT всех сборок -->
+    <AndroidLinkMode>Full</AndroidLinkMode>
+    <TrimMode>full</TrimMode>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EventSourceSupport>false</EventSourceSupport>
+    <RunAOTCompilation>true</RunAOTCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Radar.Core/Radar.Core.csproj" />
+    <PackageReference Include="Avalonia.Android" Version="12.1.3" />
+  </ItemGroup>
+</Project>
