@@ -36,6 +36,32 @@ public class LaunchMsgTests : IDisposable
         Assert.True(p.IsInformational);
     }
 
+    [Theory]
+    [InlineData("За прошедшую ночь и утро силами противовоздушной обороны было уничтожено 1015 над территориями Белгородской, Брянской, Владимирской, Калужской, Курской областей, Краснодарского края, Республики Крым")]
+    [InlineData("С 08:00 до 20:00 силами противовоздушной обороны было уничтожено 41 БПЛА над территориями Белгородской, Брянской, Курской, Орловской и Псковской областей.\n📡Локатор России - @locatorru")]
+    [InlineData("25 БПЛА, летевших на Москву, уничтожены ПВО\n❗Радар Москва - @radar_moscoww")]
+    [InlineData("Уничтожены 40 беспилотников, летевших на Москву")]
+    [InlineData("За прошедшую ночь над нашими регионами было уничтожено 7 крылатых ракет «Фламинго».")]
+    [InlineData("512 БПЛА летели в сторону Московского региона за сутки\nБольшая часть беспилотников была уничтожена силами ПВО на дальних рубежах.\nЕщё 127 БПЛА нейтрализованы на подлёте к Москве.")]
+    public void AirDefenseTally_IsInformational(string text)
+    {
+        var p = MessageParser.Parse(new RawMessage("radarrussiia", 1, T0, text), []);
+        Assert.True(p.IsInformational, $"{p.Status} {p.Threat} {string.Join(',', p.Regions)}");
+    }
+
+    [Theory]
+    [InlineData("Над территорией Ленинградской области сбиты 11 БПЛА\nПродолжается работа по БПЛА", "leningrad")]
+    [InlineData("От 150 до 250 БПЛА уничтожено нашими силами МОГ и ПВО над Санкт-Петербургом и Ленинградской областью.\nОтражение атаки продолжается.", "leningrad")]
+    [InlineData("Зеленоград работа ПВО по БПЛА", "moscow")]
+    [InlineData("Ещё одно сбитие!", null)]
+    public void OngoingAirDefense_StaysSignal(string text, string? region)
+    {
+        var p = MessageParser.Parse(new RawMessage("radarrussiia", 1, T0, text), region == null ? ["belgorod"] : []);
+        Assert.False(p.IsInformational);
+        Assert.NotEqual(ThreatType.None, p.Threat);
+        if (region != null) Assert.True(p.Regions.Contains(region) || p.Places.Any(x => x.RegionId == region));
+    }
+
     [Fact]
     public void Summaries_DoNotTurnLaunchIntoStrike()
     {
