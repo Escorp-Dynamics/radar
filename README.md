@@ -19,7 +19,13 @@
 для истории и статистики — только новые и изменившиеся месяцы.
 
 Вопросы, предложения и замечания — [в Telegram](https://t.me/people_soft?direct).
-Поддержать разработку — [ЮMoney](https://yoomoney.ru/to/4100117878671979).
+
+### Поддержать разработку
+
+<a href="https://yoomoney.ru/fundraise/1KNOTETVTB3.261005"><img src="https://img.shields.io/badge/%D0%9F%D0%BE%D0%B4%D0%B4%D0%B5%D1%80%D0%B6%D0%B0%D1%82%D1%8C-%D0%AEMoney-8B3FFD?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDIxLjM1bC0xLjQ1LTEuMzJDNS40IDE1LjM2IDIgMTIuMjggMiA4LjUgMiA1LjQyIDQuNDIgMyA3LjUgM2MxLjc0IDAgMy40MS44MSA0LjUgMi4wOUMxMy4wOSAzLjgxIDE0Ljc2IDMgMTYuNSAzIDE5LjU4IDMgMjIgNS40MiAyMiA4LjVjMCAzLjc4LTMuNCA2Ljg2LTguNTUgMTEuNTRMMTIgMjEuMzV6Ii8+PC9zdmc+" alt="Поддержать разработчика — ЮMoney" height="40"></a>
+
+<!-- виджет ЮMoney: GitHub вырезает iframe, на других площадках (сайт, документация) он покажется как есть -->
+<iframe src="https://yoomoney.ru/quickpay/fundraise/button?billNumber=1KNOTETVTB3.261005&" width="330" height="50" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
 
 ## Сборка
 
