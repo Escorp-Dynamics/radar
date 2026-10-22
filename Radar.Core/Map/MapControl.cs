@@ -468,7 +468,9 @@ public sealed class MapControl : Control
     private static readonly double[] ActiveFps = [8, 15, 30], InactiveFps = [4, 8, 15], NoiseFps = [3, 5, 10];
     // на видеокарте кадр помех почти бесплатен: зерно и полоса развёртки идут с частотой экрана, а не рывками
     private static readonly double[] GpuNoiseFps = [30, 60, 60];
-    private double NoiseRate => (SignalLoss.GpuBacked ? GpuNoiseFps : NoiseFps)[AnimationQuality];
+    private double NoiseRate => (SignalLoss.GpuBacked ? GpuNoiseFps : NoiseFps)[EffectiveQuality];
+    /// <summary>Качество анимации с учётом слабого видеочипа: не выше «экономно».</summary>
+    private int EffectiveQuality => Glass.LowPower ? 0 : AnimationQuality;
     private int _animQuality = 1;
     /// <summary>0 — экономно, 1 — обычно, 2 — плавно.</summary>
     public int AnimationQuality { get => _animQuality; set => _animQuality = Math.Clamp(value, 0, 2); }
@@ -483,7 +485,7 @@ public sealed class MapControl : Control
             if (!w.IsActive) return 1 / InactiveFps[AnimationQuality];
         }
         // каждый кадр карты на процессоре — ~3 % ядра: «обычно» (15 кадров/с) хватает пульсации и бегущим пунктирам
-        return 1 / ActiveFps[AnimationQuality];
+        return 1 / ActiveFps[EffectiveQuality];
     }
 
     private bool _noiseFrameRequested;
@@ -504,6 +506,40 @@ public sealed class MapControl : Control
             // следующий кадр — сразу по сигналу экрана: таймер диспетчера на телефоне тикает реже 60 раз в секунду
             RequestNoiseFrame();
         });
+    }
+
+    private DispatcherTimer? _wakeTimer;
+
+    /// <summary>Таймер кадров встаёт до ближайшего кадра фона (пульсация, смена рисунка помех) или до явного пробуждения.</summary>
+    private void Sleep(double? ambient, double noiseFps)
+    {
+        double wait = double.PositiveInfinity;
+        if ((Events.Count > 0 || Tracks.Count > 0) && ambient is { } iv) wait = Math.Max(0, iv - (_phase - _lastAmbient) * 4);
+        if (noiseFps > 0 && (_retro > 0 || _signalLoss > 0)) wait = Math.Min(wait, 1 / noiseFps);
+        if (wait < 0.03) return;
+        _timer.Stop();
+        if (double.IsPositiveInfinity(wait)) return;
+        _wakeTimer ??= new DispatcherTimer(TimeSpan.FromSeconds(wait), DispatcherPriority.Render, (_, _) => { _wakeTimer!.Stop(); Wake(); });
+        _wakeTimer.Interval = TimeSpan.FromSeconds(wait);
+        _wakeTimer.Start();
+    }
+
+    /// <summary>Будит таймер кадров: ввод, новые данные, перерисовка, смена настроек.</summary>
+    private void Wake()
+    {
+        if (_timer is null || _timer.IsEnabled || !IsAttached) return;
+        _wakeTimer?.Stop();
+        _lastFxTs = 0;
+        _timer.Start();
+    }
+
+    private bool IsAttached => TopLevel.GetTopLevel(this) != null;
+
+    /// <summary>Любая просьба перерисовать карту будит таймер: анимации переходов, камеры и угасания идут от него.</summary>
+    public new void InvalidateVisual()
+    {
+        base.InvalidateVisual();
+        Wake();
     }
 
     public MapControl()
@@ -567,6 +603,11 @@ public sealed class MapControl : Control
                 if (lossMoving || retroMoving) Glass.InvalidateBackdrop();
                 _noiseLayer.InvalidateVisual();
             }
+            // ничего не движется: таймер (60 тиков в секунду) засыпает до следующего кадра фона — на слабых телефонах
+            // пустые тики в покое съедали основную долю потока интерфейса
+            bool busy = _dragPending || _anim.IsAnimating || ui || SpiderAnimating || CameraAnimating || lossMoving || retroMoving
+                || _tipFade is > 0.001 and < 0.999 || AreasFading || noiseFps >= 30 && (_retro > 0 || _signalLoss > 0) && !WantsVsyncNoise();
+            if (!busy) Sleep(ambient, noiseFps);
         });
         // после окончания жеста перерисовываем подложку в полном качестве
         _settle = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Background, (_, _) =>
@@ -598,6 +639,7 @@ public sealed class MapControl : Control
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         _timer.Stop();
+        _wakeTimer?.Stop();
         _settle.Stop();
         _baseJobCts?.Cancel();
         _base?.Dispose();
@@ -627,6 +669,7 @@ public sealed class MapControl : Control
         Events = events;
         Tracks = tracks;
         _anim.SetData(events, tracks, DateTimeOffset.UtcNow);
+        Wake();
         _labelKeepUrgentUntil = System.Diagnostics.Stopwatch.GetTimestamp() + (long)(System.Diagnostics.Stopwatch.Frequency * (MapAnimator.FadeIn.TotalSeconds + 0.3));
         var labels = new HashSet<string>(StringComparer.Ordinal);
         foreach (var t in tracks.Where(t => t.IsMoving || t.Points.Count > 1))
@@ -749,6 +792,7 @@ public sealed class MapControl : Control
         StopCamera();
         if (Distance(new Point(to.X * Scale, to.Y * Scale), new Point(_center.X * Scale, _center.Y * Scale)) < 1 && Math.Abs(z - _zoom) < 0.01) return;
         _fly = (_center, _zoom, to, z, 0, seconds);
+        Wake();
         InvalidateVisual();
     }
 
@@ -1217,6 +1261,7 @@ public sealed class MapControl : Control
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
+        Wake();
         base.OnPointerPressed(e);
         if (_signalLost) return; // без связи карта не реагирует: обстановка устарела
         if (TouchPressed(e)) return;
@@ -1243,6 +1288,7 @@ public sealed class MapControl : Control
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
+        Wake();
         base.OnPointerMoved(e);
         if (_signalLost) return;
         if (TouchMoved(e)) return;
@@ -1369,6 +1415,7 @@ public sealed class MapControl : Control
 
     protected override void OnPointerExited(PointerEventArgs e)
     {
+        Wake();
         base.OnPointerExited(e);
         // палец «уходит» с карты при каждом отпускании — закреплённая касанием подсказка остаётся
         if (e.Pointer.Type == PointerType.Touch && _touchTip) return;
@@ -1385,6 +1432,7 @@ public sealed class MapControl : Control
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
+        Wake();
         base.OnPointerReleased(e);
         if (TouchReleased(e)) return;
         // жест начинается только левой кнопкой (OnPointerPressed) — отпускание другой кнопки его не завершает
@@ -1419,6 +1467,7 @@ public sealed class MapControl : Control
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
+        Wake();
         base.OnPointerCaptureLost(e);
         _touches.Remove(e.Pointer);
         if (_touches.Count < 2) _pinching = false;
@@ -1453,6 +1502,7 @@ public sealed class MapControl : Control
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
+        Wake();
         base.OnPointerWheelChanged(e);
         if (_signalLost) { e.Handled = true; return; }
         SmoothZoom(e.GetPosition(this), e.Delta.Y * 0.4);
@@ -2564,13 +2614,26 @@ public sealed class MapControl : Control
         long t = System.Diagnostics.Stopwatch.GetTimestamp();
         bool urgent = t < _labelKeepUrgentUntil;
         bool first = _labelKeep.Count == 0 && list.Count > 0;
-        if (!first && !urgent && System.Diagnostics.Stopwatch.GetElapsedTime(_labelKeepStamp, t).TotalSeconds < 1) { Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Background); return; }
+        if (!first && !urgent && System.Diagnostics.Stopwatch.GetElapsedTime(_labelKeepStamp, t).TotalSeconds < 1)
+        {
+            // не чаще раза в секунду: одна отложенная перерисовка к концу окна, а не повтор в каждом кадре
+            // (повтор держал карту в непрерывной перерисовке, пока подписи движущихся целей сдвигались)
+            if (!_labelKeepRetry)
+            {
+                _labelKeepRetry = true;
+                var left = TimeSpan.FromSeconds(1) - System.Diagnostics.Stopwatch.GetElapsedTime(_labelKeepStamp, t);
+                DispatcherTimer.RunOnce(() => { _labelKeepRetry = false; InvalidateVisual(); }, left > TimeSpan.Zero ? left : TimeSpan.FromMilliseconds(1));
+            }
+            return;
+        }
         _labelKeepKey = key;
         _labelKeepStamp = t;
         _labelKeep = list;
         _baseDirty = true;
         Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Background);
     }
+
+    private bool _labelKeepRetry;
 
     /// <summary>Отладка (--render-demo): подписей в очереди, нарисовано, скрытых «голов», треков с прогнозом, плашек регионов.</summary>
     public (int Queued, int Drawn, int MergedHeads, int Forecasts, int RegionTags) LastLabelStats;

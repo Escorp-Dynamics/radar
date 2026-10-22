@@ -1192,6 +1192,8 @@ public partial class MainView : UserControl
         double t = System.Diagnostics.Stopwatch.GetElapsedTime(PulseStart).TotalSeconds % 2.8 / 1.4;
         double tri = t <= 1 ? t : 2 - t;
         double op = on ? Math.Round(1 - 0.85 * (0.5 - 0.5 * Math.Cos(Math.PI * tri)), 2) : 1;
+        // облегчённый режим: точка не мигает, а таймер (8 изменений в секунду → перерисовка шапки и ленты) стоит
+        if (Radar.Map.Glass.LowPower) { op = 1; _pulse?.Stop(); }
         if (LiveDot.Opacity != op) LiveDot.Opacity = op;
         if (StatusDot.Opacity != op) StatusDot.Opacity = op;
     }
@@ -1266,7 +1268,8 @@ public partial class MainView : UserControl
     /// <summary>Доля места, занятого панелью (0…1): тот же закон и длительность, что у выезда самой панели (CubicEaseOut, 0.38 с).</summary>
     private void AnimateSidebarSpace(double to, bool instant)
     {
-        if (instant) { _sideTimer?.Stop(); _sideK = _sideFrom = _sideTo = to; ApplySidebarSpace(); return; }
+        // шторка лежит поверх карты и места у неё не отнимает: покадровый пересчёт (с перерисовкой всей карты) не нужен
+        if (instant || DrawerMode) { _sideTimer?.Stop(); _sideK = _sideFrom = _sideTo = to; ApplySidebarSpace(); return; }
         (_sideFrom, _sideTo, _sideStart) = (_sideK, to, System.Diagnostics.Stopwatch.GetTimestamp());
         _sideTimer ??= new Avalonia.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(16), Avalonia.Threading.DispatcherPriority.Render, (_, _) =>
         {
@@ -1364,7 +1367,9 @@ public partial class MainView : UserControl
         // шторка поверх карты (телефон) места у карты не отнимает
         double w = DrawerMode ? 0 : SidebarWidth * _sideK;
         Overlays.Margin = new Avalonia.Thickness(Safe.Left, 0, w + (DrawerMode ? Safe.Right : 0), Safe.Bottom);
-        Map.Obscured = new Avalonia.Thickness(Safe.Left, BarHeight + Safe.Top + 1, w + Safe.Right, Safe.Bottom);
+        var obscured = new Avalonia.Thickness(Safe.Left, BarHeight + Safe.Top + 1, w + Safe.Right, Safe.Bottom);
+        if (Map.Obscured == obscured) return;
+        Map.Obscured = obscured;
         Map.InvalidateVisual();
     }
 

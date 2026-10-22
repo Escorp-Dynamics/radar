@@ -14,6 +14,41 @@ namespace Radar.Map;
 /// </summary>
 public static class Glass
 {
+    /// <summary>
+    /// Облегчённая отрисовка для слабых видеочипов (Adreno 5xx/6xx младших серий, Mali-G5x/G6x, PowerVR):
+    /// стекло без размытия (плотная тонировка); фоновая анимация карты и помехи — с частотой «экономно».
+    /// Определяется по строке рендерера OpenGL при первом кадре на видеочипе.
+    /// </summary>
+    public static bool LowPower { get; private set; }
+    private static bool _gpuProbed;
+
+    internal static void ProbeGpu(GRRecordingContext? gpu)
+    {
+        if (_gpuProbed || gpu == null) return;
+        _gpuProbed = true;
+        string renderer = GlRenderer();
+        bool weak = Environment.GetEnvironmentVariable("RADAR_LOWPOWER") is { Length: > 0 } force ? force == "1" : IsWeakGpu(renderer);
+        if (!weak) return;
+        LowPower = true;
+    }
+
+    /// <summary>Слабые мобильные видеочипы: Adreno до 620 (кроме 618/619 у флагманов средних лет — тоже слабые для полноэкранного стекла), Mali-G5x/G6x/T, PowerVR.</summary>
+    public static bool IsWeakGpu(string renderer)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(renderer, @"Adreno\D*(\d{3})");
+        if (m.Success) return int.Parse(m.Groups[1].Value) < 630;
+        if (System.Text.RegularExpressions.Regex.IsMatch(renderer, @"Mali-(T\d|G[1-6]\d\b|G[1-7]\d MP[1-3]\b)")) return true;
+        return renderer.Contains("PowerVR", StringComparison.Ordinal);
+    }
+
+    [System.Runtime.InteropServices.DllImport("libGLESv2", EntryPoint = "glGetString")]
+    private static extern IntPtr GlGetString(int name);
+
+    private static string GlRenderer()
+    {
+        try { return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(GlGetString(0x1F01)) ?? ""; }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return ""; }
+    }
     public static readonly Color Tint = Color.FromArgb(196, 8, 10, 14);
     public static readonly Color Accent = Color.Parse("#7CD4FF");
     public static readonly IBrush Hairline = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
@@ -46,9 +81,12 @@ public static class Glass
         bool border = true, bool brackets = false, Color? accent = null)
     {
         if (rect.Width < 1 || rect.Height < 1) return;
-        ctx.Custom(new BackdropOp(rect, chamfer, sigma));
+        if (!LowPower) ctx.Custom(new BackdropOp(rect, chamfer, sigma));
         var shape = Shape(rect, chamfer);
-        ctx.DrawGeometry(new SolidColorBrush(tint ?? Tint), null, shape);
+        // без размытия тонировка плотнее: карта под панелью не должна мешать чтению
+        var t = tint ?? Tint;
+        if (LowPower) t = Color.FromArgb((byte)Math.Max(t.A, (byte)236), t.R, t.G, t.B);
+        ctx.DrawGeometry(new SolidColorBrush(t), null, shape);
         if (border) ctx.DrawGeometry(null, new Pen(Hairline, 1), Shape(rect.Deflate(0.5), Math.Max(0, chamfer - 0.2)));
         if (brackets) DrawTicks(ctx, rect.Deflate(0.5), chamfer, accent ?? Accent);
     }
@@ -208,13 +246,23 @@ public static class Glass
             int save = canvas.Save();
             canvas.ClipPath(path, SKClipOperation.Intersect, true);
             // размытие + немного насыщенности: цвета угроз под стеклом остаются узнаваемыми
-            if (lease.SkSurface is not { } surface || !DrawCheapBackdrop(canvas, surface, r, (float)sigma))
+            var surface = lease.SkSurface;
+            ProbeGpu(surface?.Context as GRRecordingContext);
+            if (surface == null || !DrawCheapBackdrop(canvas, surface, r, (float)sigma))
                 DrawLayerBackdrop(canvas, r, (float)sigma);
             // зерно копиями готового растра: тайловый шейдер на всю панель считает каждый пиксель отдельно
+            // на видеочипе — один вызов с повторяющимся шейдером; на процессоре плитки дешевле попиксельного шейдера
             var g = NoiseImage();
-            for (float y = r.Top; y < r.Bottom; y += NoiseN)
-                for (float x = r.Left; x < r.Right; x += NoiseN)
-                    canvas.DrawImage(g, x, y);
+            if (surface?.Context != null)
+            {
+                using var sh = g.ToShader(SKShaderTileMode.Repeat, SKShaderTileMode.Repeat, SKMatrix.CreateTranslation(r.Left, r.Top));
+                using var gp = new SKPaint { Shader = sh };
+                canvas.DrawRect(r, gp);
+            }
+            else
+                for (float y = r.Top; y < r.Bottom; y += NoiseN)
+                    for (float x = r.Left; x < r.Right; x += NoiseN)
+                        canvas.DrawImage(g, x, y);
             canvas.RestoreToCount(save);
         }
 
@@ -262,7 +310,9 @@ public static class Glass
             if (snap == null) return false;
             const int k = 8;
             int w = Math.Max(1, src.Width / k), h = Math.Max(1, src.Height / k);
-            using var small = SKSurface.Create(new SKImageInfo(w, h, SKImageInfo.PlatformColorType, SKAlphaType.Premul));
+            // промежуточные поверхности — там же, где кадр (на видеочипе): без копирования снимка в память процессора и обратно
+            var gpu = surface.Context as GRRecordingContext;
+            using var small = Make(gpu, w, h);
             if (small == null) return false;
             using (var p = new SKPaint())
                 small.Canvas.DrawImage(snap, new SKRect(0, 0, w, h), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear), p);
@@ -270,7 +320,7 @@ public static class Glass
             using var blur = SKImageFilter.CreateBlur(sigma / k, sigma / k, SKShaderTileMode.Clamp);
             using var cf = SKColorFilter.CreateColorMatrix(Saturate);
             using var paint = new SKPaint { ImageFilter = blur, ColorFilter = cf };
-            using var blurred = SKSurface.Create(new SKImageInfo(w, h, SKImageInfo.PlatformColorType, SKAlphaType.Premul));
+            using var blurred = Make(gpu, w, h);
             if (blurred == null) return false;
             blurred.Canvas.DrawImage(smallImg, 0, 0, paint);
             var outImg = blurred.Snapshot();
@@ -282,6 +332,12 @@ public static class Glass
                 _cache[key] = (outImg, now, Volatile.Read(ref _version));
             }
             return true;
+        }
+
+        private static SKSurface? Make(GRRecordingContext? gpu, int w, int h)
+        {
+            var info = new SKImageInfo(w, h, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
+            return (gpu != null ? SKSurface.Create(gpu, false, info) : null) ?? SKSurface.Create(info);
         }
 
         /// <summary>Размытая копия — в координатах устройства, поверх текущей трансформации.</summary>
