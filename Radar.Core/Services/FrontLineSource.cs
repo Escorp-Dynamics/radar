@@ -50,11 +50,15 @@ public static class FrontLineSource
         if (DateTimeOffset.UtcNow - cachedAt < MaxAge) return;
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, Url);
-            req.Headers.TryAddWithoutValidation("User-Agent", "Radar/1.0 (civil defense map)");
-            using var resp = await http.SendAsync(req, ct).ConfigureAwait(false);
-            resp.EnsureSuccessStatusCode();
-            var bytes = await resp.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+            // сайт карты заблокирован в части сетей — при сетевом сбое напрямую повтор через ротатор прокси
+            var bytes = await TelegramRoute.SendAsync(http, async (c, t) =>
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, Url);
+                req.Headers.TryAddWithoutValidation("User-Agent", "Radar/1.0 (civil defense map)");
+                using var resp = await c.SendAsync(req, t).ConfigureAwait(false);
+                resp.EnsureSuccessStatusCode();
+                return await resp.Content.ReadAsByteArrayAsync(t).ConfigureAwait(false);
+            }, ct).ConfigureAwait(false);
             var (lines, occupied) = Extract(bytes);
             if (lines.Count == 0) return;
             Borderline.SetFront(lines, occupied);
