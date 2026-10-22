@@ -26,8 +26,23 @@ public readonly record struct StatTrack(DateTimeOffset Start, ThreatType Threat,
 public static class ArchiveStats
 {
     private const int Version = 6;
-    // кеш привязан и к сборке: правки разбора и движка меняют статистику, а архив при этом тот же
-    private static readonly long BuildStamp = typeof(ArchiveStats).Assembly.ManifestModule.ModuleVersionId.GetHashCode();
+    /// <summary>
+    /// Кеш привязан и к коду: правки разбора и движка меняют статистику, а архив при этом тот же. Отпечаток — git-деревья
+    /// разбора и движка (см. Radar.Core.csproj): одинаков у CI и релиза из одного кода и не меняется от пересборки
+    /// без правок движка. Без него (сборка вне git) — отпечаток сборки.
+    /// </summary>
+    private static readonly long BuildStamp = EngineStamp();
+
+    private static long EngineStamp()
+    {
+        var meta = typeof(ArchiveStats).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .OfType<System.Reflection.AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "RadarEngineStamp")?.Value;
+        if (string.IsNullOrEmpty(meta)) return typeof(ArchiveStats).Assembly.ManifestModule.ModuleVersionId.GetHashCode();
+        // FNV-1a: детерминированно между процессами и машинами (string.GetHashCode случаен от запуска к запуску)
+        ulong h = 14695981039346656037;
+        foreach (char c in meta) h = unchecked((h ^ c) * 1099511628211);
+        return unchecked((long)h);
+    }
     /// <summary>Запас после конца месяца: отбои и репосты тревог, начавшихся в последние часы месяца.</summary>
     private static readonly TimeSpan Tail = TimeSpan.FromHours(6);
 
@@ -38,12 +53,12 @@ public static class ArchiveStats
     {
         long stamp = ArchiveStamp(archiveDir, month);
         if (Memory.TryGetValue((archiveDir, month), out var mem) && mem.Stamp == stamp) return true;
-        var cache = Path.Combine(archiveDir, ".stats", month.ToString("yyyy-MM", CultureInfo.InvariantCulture) + ".tsv");
+        var cache = CachePath(archiveDir, month);
         try
         {
             if (!File.Exists(cache)) return false;
             using var r = new StreamReader(cache, Encoding.UTF8);
-            return r.ReadLine() == $"stats\t{Version}\t{stamp}";
+            return r.ReadLine() == Header(stamp);
         }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }
@@ -52,7 +67,7 @@ public static class ArchiveStats
     /// <summary>События и треки месяца (из памяти, кеша или прогоном архива).</summary>
     public static (List<StatEvent> Events, List<StatTrack> Tracks) Month(string archiveDir, DateTimeOffset month, CancellationToken ct = default)
     {
-        var cache = Path.Combine(archiveDir, ".stats", month.ToString("yyyy-MM", CultureInfo.InvariantCulture) + ".tsv");
+        var cache = CachePath(archiveDir, month);
         long stamp = ArchiveStamp(archiveDir, month);
         // в памяти: смена периода на дашборде не перечитывает файлы (весь архив — ~1,5 с разбора TSV)
         if (Memory.TryGetValue((archiveDir, month), out var mem) && mem.Stamp == stamp) return (mem.Events, mem.Tracks);
@@ -62,6 +77,58 @@ public static class ArchiveStats
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, DateTimeOffset), object> Locks = new();
+
+    private static string CachePath(string archiveDir, DateTimeOffset month) =>
+        Path.Combine(archiveDir, ".stats", month.ToString("yyyy-MM", CultureInfo.InvariantCulture) + ".tsv");
+
+    /// <summary>
+    /// Прежние итоги месяца, даже устаревшие (архив дополнился, движок изменился): их можно показать сразу, пока месяц
+    /// пересчитывается. Null — месяц ещё ни разу не считался (или кеш другого формата).
+    /// </summary>
+    public static (List<StatEvent> Events, List<StatTrack> Tracks)? Peek(string archiveDir, DateTimeOffset month)
+    {
+        if (Memory.TryGetValue((archiveDir, month), out var mem)) return (mem.Events, mem.Tracks);
+        return TryRead(CachePath(archiveDir, month), null);
+    }
+
+    /// <summary>Отпечаток, с которым должен быть записан кеш месяца, чтобы считаться актуальным.</summary>
+    public static long Stamp(string archiveDir, DateTimeOffset month) => ArchiveStamp(archiveDir, month);
+
+    /// <summary>Строка-заголовок кеша месяца (по ней кеш из CI сверяется с ожидаемым).</summary>
+    public static string Header(long stamp) => $"stats\t{Version}\t{stamp}";
+
+    /// <summary>Содержимое кеша месяца (для выкладки в релиз), если он актуален.</summary>
+    public static byte[]? Export(string archiveDir, DateTimeOffset month)
+    {
+        Month(archiveDir, month);
+        var path = CachePath(archiveDir, month);
+        return IsReady(archiveDir, month) && File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
+
+    /// <summary>
+    /// Принимает готовый кеш месяца (посчитанный в CI тем же кодом): только если его заголовок совпадает с ожидаемым
+    /// отпечатком этого архива и этой сборки и он читается целиком. Возвращает, принят ли кеш.
+    /// </summary>
+    public static bool Import(string archiveDir, DateTimeOffset month, byte[] content)
+    {
+        long stamp = ArchiveStamp(archiveDir, month);
+        var path = CachePath(archiveDir, month);
+        var tmp = path + ".import";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(tmp, content);
+            if (TryRead(tmp, stamp) is not { } data) { File.Delete(tmp); return false; }
+            lock (Locks.GetOrAdd((archiveDir, month), _ => new object()))
+            {
+                File.Move(tmp, path, true);
+                Memory[(archiveDir, month)] = (stamp, data.Item1, data.Item2);
+            }
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
 
     private static (List<StatEvent> Events, List<StatTrack> Tracks) MonthLocked(string archiveDir, DateTimeOffset month, string cache, long stamp, CancellationToken ct)
     {
@@ -177,13 +244,15 @@ public static class ArchiveStats
 
     // ---------------- кеш (TSV) ----------------
 
-    private static (List<StatEvent>, List<StatTrack>)? TryRead(string path, long stamp)
+    /// <summary>Кеш месяца; <paramref name="stamp"/> null — любой отпечаток (устаревший кеш), но того же формата.</summary>
+    private static (List<StatEvent>, List<StatTrack>)? TryRead(string path, long? stamp)
     {
         if (!File.Exists(path)) return null;
         try
         {
             using var r = new StreamReader(path, Encoding.UTF8);
-            if (r.ReadLine() != $"stats\t{Version}\t{stamp}") return null;
+            var head = r.ReadLine();
+            if (stamp is { } s ? head != Header(s) : head?.StartsWith($"stats\t{Version}\t", StringComparison.Ordinal) != true) return null;
             var ev = new List<StatEvent>();
             var tr = new List<StatTrack>();
             while (r.ReadLine() is { } line)
@@ -216,7 +285,7 @@ public static class ArchiveStats
         var tmp = path + ".tmp";
         using (var w = new StreamWriter(tmp, false, new UTF8Encoding(false)))
         {
-            w.WriteLine($"stats\t{Version}\t{stamp}");
+            w.WriteLine(Header(stamp));
             foreach (var e in events)
                 w.WriteLine(string.Join('\t', "e", e.Start.ToUnixTimeSeconds(), e.End.ToUnixTimeSeconds(), (int)e.Threat, (int)e.Kind, (int)e.Level, (int)e.Status,
                     string.Join(';', e.Regions.Select(Clean)), string.Join(';', e.Places.Select(Clean)), string.Join(';', e.Lats.Select(N)), string.Join(';', e.Lons.Select(N)), string.Join(';', e.PlaceRegions.Select(Clean))));

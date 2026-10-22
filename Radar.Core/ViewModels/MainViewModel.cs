@@ -524,7 +524,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
             http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", UserAgent.Value);
             var r = await ArchiveSync.SyncAsync(http, dir, Distribution.ArchiveBaseUrl, progress, CancellationToken.None);
             ArchiveSyncText = r.Downloaded > 0 ? $"Архив обновлён · загружено {r.Downloaded} мес. · {DateTime.Now:HH:mm}" : $"Архив актуален · {r.Total} мес. · {DateTime.Now:HH:mm}";
-            if (r.Changed)
+            // готовая статистика из CI (тот же код и архив): месяцы не прогоняются через движок на устройстве
+            int stats = 0;
+            try { stats = await StatsPack.SyncAsync(http, dir, Distribution.ArchiveBaseUrl, CancellationToken.None); }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or TaskCanceledException or UnauthorizedAccessException)
+            {
+                System.Diagnostics.Trace.WriteLine($"Статистика из релиза: {ex.Message}");
+            }
+            if (r.Changed || stats > 0)
             {
                 _statsReports.Clear();
                 if (IsStats) _ = LoadStatsAsync();
@@ -932,23 +939,50 @@ public sealed class MainViewModel : INotifyPropertyChanged
         // прогресс — только если какой-то месяц предстоит прогнать через движок
         var missing = await Task.Run(() => need.Where(m => !ArchiveStats.IsReady(dir, m)).ToList());
         if (cts.IsCancellationRequested) return;
+        var watch = Settings.WatchAreas.ToList();
+        var region = Stats.Region;
         if (missing.Count > 0)
         {
+            // у всех недостающих месяцев есть прежние итоги (архив дополнился, обновился движок) — они показываются сразу,
+            // а месяцы тихо пересчитываются; индикатор — только если какой-то месяц не считался вовсе
+            var stale = await Task.Run(() =>
+            {
+                var parts = need.Select(m => ArchiveStats.Peek(dir, m)).ToList();
+                if (parts.Any(p => p is null)) return null;
+                var ev = parts.SelectMany(p => p!.Value.Events).ToList();
+                var tr = parts.SelectMany(p => p!.Value.Tracks).ToList();
+                return StatsSummary.Build(ev, tr, from, to, region, watch, Settings.WatchRadiusKm, ev);
+            }, cts.Token);
+            if (cts.IsCancellationRequested) return;
+            if (stale != null)
+            {
+                Stats.Apply(stale);
+                StatsHeatChanged?.Invoke(stale.RegionHeat, Stats.Region);
+            }
+            // идёт загрузка архива и готовой статистики из релиза — по её окончании экран перечитается сам;
+            // считать сейчас то, что вот-вот придёт готовым, — минуты работы процессора впустую
+            if (_archiveSync is { IsCompleted: false } sync)
+            {
+                if (stale == null) Stats.SetProgress("Загрузка статистики архива…", 0);
+                await sync.ContinueWith(_ => { }, TaskScheduler.Default);
+                if (cts.IsCancellationRequested) return;
+                missing = await Task.Run(() => need.Where(m => !ArchiveStats.IsReady(dir, m)).ToList());
+                if (cts.IsCancellationRequested) return;
+            }
             // недостающие месяцы — параллельно (каждый — свой прогон движка), новые первыми
             int done = 0;
-            Stats.SetProgress(missing.Count == 1 ? $"Расчёт {Stats.MonthTitle(missing[0])}" : $"Расчёт архива · 0 из {missing.Count} мес.", 0);
+            if (stale == null && missing.Count > 0)
+                Stats.SetProgress(missing.Count == 1 ? $"Расчёт {Stats.MonthTitle(missing[0])}" : $"Расчёт архива · 0 из {missing.Count} мес.", 0);
             await Task.Run(() => Parallel.ForEach(missing.OrderByDescending(m => m),
                 new ParallelOptions { CancellationToken = cts.Token, MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2) }, m =>
                 {
                     ArchiveStats.Month(dir, m, cts.Token);
                     int d = Interlocked.Increment(ref done);
-                    if (missing.Count > 1)
+                    if (missing.Count > 1 && stale == null)
                         Dispatcher.UIThread.Post(() => { if (_statsCts == cts) Stats.SetProgress($"Расчёт архива · {d} из {missing.Count} мес.", (double)d / missing.Count); });
                 }), cts.Token);
         }
         if (cts.IsCancellationRequested) return;
-        var watch = Settings.WatchAreas.ToList();
-        var region = Stats.Region;
         // сводка того же периода и фильтра уже собиралась — без пересчёта
         var reportKey = (from, to, region, string.Join("|", watch.Select(w => $"{w.Kind}:{w.Id}:{w.Lat}:{w.Lon}:{w.RadiusKm}")), Settings.WatchRadiusKm,
             string.Join(",", need.Select(m => ArchiveStats.IsReady(dir, m) ? m.ToUnixTimeSeconds() : 0)));
@@ -990,8 +1024,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void WarmStats(string dir, List<DateTimeOffset> months)
     {
         if (_statsWarm is { IsCompleted: false }) return;
-        _statsWarm = Task.Run(() =>
+        var sync = _archiveSync;
+        _statsWarm = Task.Run(async () =>
         {
+            // готовые месяцы из релиза приходят с загрузкой архива — прогреваются только оставшиеся
+            if (sync != null) await sync.ContinueWith(_ => { }, TaskScheduler.Default);
             var todo = months.Where(m => !ArchiveStats.IsReady(dir, m)).OrderByDescending(m => m).ToList();
             try
             {

@@ -23,6 +23,30 @@
     <EmbeddedResource Include="Assets/replay.tsv.gz" LogicalName="Radar.replay.tsv.gz" />
   </ItemGroup>
 
+  <!--
+    Отпечаток движка для кеша статистики архива: git-деревья кода разбора и движка (+ незакоммиченные правки в них).
+    Пересборка без правок этих файлов (интерфейс, карта) кеш не сбрасывает, а CI и релиз из одного кода дают один отпечаток —
+    поэтому статистика, посчитанная в CI, подходит клиентам. Без git — отпечаток сборки (кеш живёт до пересборки).
+  -->
+  <Target Name="RadarEngineStamp" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git rev-parse HEAD:./Services HEAD:./Models HEAD:./Map/Basemap.cs HEAD:./Assets" WorkingDirectory="$(MSBuildProjectDirectory)"
+          ConsoleToMSBuild="true" IgnoreExitCode="true" EchoOff="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_RadarEngineTrees" />
+      <Output TaskParameter="ExitCode" PropertyName="_RadarEngineTreesExit" />
+    </Exec>
+    <Exec Condition="'$(_RadarEngineTreesExit)' == '0'" Command="git diff HEAD -- ./Services ./Models ./Map/Basemap.cs ./Assets | git hash-object --stdin"
+          WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" IgnoreExitCode="true" EchoOff="true"
+          StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_RadarEngineDirty" />
+    </Exec>
+    <ItemGroup Condition="'$(_RadarEngineTreesExit)' == '0'">
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>RadarEngineStamp</_Parameter1>
+        <_Parameter2>$(_RadarEngineTrees);$(_RadarEngineDirty)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />

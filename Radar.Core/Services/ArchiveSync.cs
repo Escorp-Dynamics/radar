@@ -17,7 +17,7 @@ public static class ArchiveSync
     public static string LocalDir => Path.Combine(AppPaths.Root, "archive-pack");
 
     /// <summary>Загрузка с GitHub; при сетевом сбое — повтор через ротатор прокси (см. <see cref="TelegramRoute.SendAsync"/>).</summary>
-    private static Task<byte[]> GetAsync(HttpClient http, string url, CancellationToken ct) =>
+    internal static Task<byte[]> GetAsync(HttpClient http, string url, CancellationToken ct) =>
         TelegramRoute.SendAsync(http, async (c, t) =>
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);

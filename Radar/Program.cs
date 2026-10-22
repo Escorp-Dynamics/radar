@@ -8,6 +8,7 @@ internal static class Program
     private static readonly Dictionary<string, int> ToolArgCounts = new()
     {
         ["--archive-pack"] = 3, ["--archive-verify"] = 2, ["--archive-fetch"] = 2, ["--archive-validate"] = 3, ["--archive-stats"] = 3, ["--archive-unpack"] = 3,
+        ["--archive-stats-pack"] = 3,
     };
 
     [STAThread]
@@ -120,6 +121,15 @@ internal static class Program
         {
             // Разбор всего архива: отчёты по нераспознанному (новые типы угроз, формулировки, пункты)
             Radar.Services.ArchiveValidate.Run(args[1], args[2]);
+            return;
+        }
+        if (args.Length >= 3 && args[0] == "--archive-stats-pack")
+        {
+            // Статистика всех месяцев для релиза: --archive-stats-pack <архив> <куда> [прежний пакет статистики]
+            // (после хуков подложки — итоги те же, что посчитало бы приложение)
+            if (args.Length >= 4) Console.WriteLine($"из прежнего пакета: {Radar.Services.StatsPack.ImportDir(args[1], args[3])} мес.");
+            var sp = Radar.Services.StatsPack.Pack(args[1], args[2], Console.WriteLine);
+            Console.WriteLine($"месяцев {sp.Months.Count} → {Path.Combine(args[2], Radar.Services.StatsPack.ManifestName)}");
             return;
         }
         if (args.Length >= 3 && args[0] == "--archive-stats")

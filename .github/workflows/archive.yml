@@ -1,10 +1,14 @@
 # Ежедневное обновление архива сообщений: прежний архив из релиза «archive» → докачка новых сообщений каналов (t.me/s)
-# → упаковка → проверка → загрузка изменившихся месяцев и манифеста. Приложение докачивает их само.
+# → упаковка → проверка → статистика месяцев → загрузка изменившихся файлов и манифестов. Приложение докачивает их само.
+# Статистика привязана к коду разбора и движка — при его изменении в main она пересчитывается сразу, а не на следующий день.
 name: archive
 
 on:
   schedule:
     - cron: '17 1 * * *'
+  push:
+    branches: [main]
+    paths: ['Radar.Core/Services/**', 'Radar.Core/Models/**', 'Radar.Core/Map/Basemap.cs', 'Radar.Core/Assets/**', 'Radar.Core/Radar.Core.csproj']
   workflow_dispatch:
 
 concurrency:
@@ -33,6 +37,9 @@ jobs:
         run: |
           mkdir -p pack
           gh release download archive --repo "$GITHUB_REPOSITORY" --dir pack --pattern '*' || echo "релиза archive ещё нет — полная докачка"
+          # прежняя статистика — отдельно: посчитанные месяцы с тем же отпечатком не пересчитываются
+          mkdir -p prevstats
+          mv pack/stats.json pack/stats-*.tsv.gz prevstats/ 2>/dev/null || true
           ls pack | wc -l
       - name: unpack
         run: |
@@ -44,6 +51,8 @@ jobs:
         run: |
           dotnet tool/Radar.dll --archive-pack raw pack
           dotnet tool/Radar.dll --archive-verify pack
+      - name: stats
+        run: dotnet tool/Radar.dll --archive-stats-pack pack stats prevstats
       - name: upload changed months
         run: |
           if ! gh release view archive --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -51,13 +60,13 @@ jobs:
               --title "Архив сообщений" --notes "Помесячный архив сообщений каналов тревог (manifest.json + YYYY-MM.*.tsv.gz). Обновляется ежедневно автоматически."
           fi
           existing=$(gh release view archive --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
-          for f in pack/*.tsv.gz; do
+          for f in pack/*.tsv.gz stats/stats-*.tsv.gz; do
             n=$(basename "$f")
             grep -qxF "$n" <<<"$existing" || gh release upload archive "$f" --repo "$GITHUB_REPOSITORY"
           done
-          # манифест — последним: клиенты видят новые месяцы, только когда их пакеты уже загружены
-          gh release upload archive pack/manifest.json --repo "$GITHUB_REPOSITORY" --clobber
-          keep=$(cd pack && ls *.tsv.gz manifest.json)
+          # манифесты — последними: клиенты видят новые месяцы, только когда их пакеты уже загружены
+          gh release upload archive pack/manifest.json stats/stats.json --repo "$GITHUB_REPOSITORY" --clobber
+          keep=$( (cd pack && ls *.tsv.gz manifest.json); (cd stats && ls stats-*.tsv.gz stats.json) )
           for n in $existing; do
             grep -qxF "$n" <<<"$keep" || gh release delete-asset archive "$n" --repo "$GITHUB_REPOSITORY" --yes
           done
