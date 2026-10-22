@@ -2138,6 +2138,24 @@ public sealed class MapControl : Control
         _pickPlace = PlaceLabelAt(p);
         _pickHover = _pickPlace == null ? RegionAtScreen(p) : null;
     }
+    /// <summary>Отладка (--render-ui): наведение на отметку события с пунктом <paramref name="label"/> — карточка без анимации.</summary>
+    public string DebugHoverEvent(string label)
+    {
+        foreach (var e in Events)
+            foreach (var pt in e.Points)
+            {
+                if (!pt.Label.StartsWith(label, StringComparison.OrdinalIgnoreCase)) continue;
+                var at = WorldToScreen(Basemap.Project(pt.Pos));
+                if (HitEvent(at) is not { } h) continue;
+                _hover = at;
+                _hoverEvent = _tipEvent = h;
+                _tipPos = at;
+                _tipFade = 1;
+                _hl[h] = 1;
+                return $"карточка: {h.Title} у «{pt.Label}» {at.X:0},{at.Y:0}";
+            }
+        return $"карточка: отметка «{label}» не найдена";
+    }
     public double DebugBaseZoom => _baseZoom;
     public Task? DebugBaseJob => _baseJob;
     public Task? DebugAreasJob => _areasJob;

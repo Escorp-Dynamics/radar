@@ -350,6 +350,9 @@ public partial class MainView : UserControl
                     .OrderBy(m => m.Time).ToList());
                 // лента и каналы заполнены — снимок «на связи», без плашки загрузки
                 vm.DebugSetOnline();
+                // лента в модели пересылает на карту события без треков архива — на снимке карта та же, что без ленты
+                w._vm!.MapEventsChanged -= w.OnMapEvents;
+                w.Map.SetEvents(ce, ct);
             }
             if (int.TryParse(Environment.GetEnvironmentVariable("RADAR_UI_TAB"), out var tab)) w.SideTabs.SelectedIndex = tab;
             if (Environment.GetEnvironmentVariable("RADAR_UI_REGIONS") is { Length: > 0 } rg)
@@ -416,6 +419,12 @@ public partial class MainView : UserControl
         // RADAR_UI_CENTER=lat,lon,zoom — вид карты
         if (Environment.GetEnvironmentVariable("RADAR_UI_CENTER") is { Length: > 0 } cz && cz.Split(',') is [var cla, var clo, var czz])
             w.Map.CenterOn(new GeoPoint(double.Parse(cla, System.Globalization.CultureInfo.InvariantCulture), double.Parse(clo, System.Globalization.CultureInfo.InvariantCulture)), double.Parse(czz, System.Globalization.CultureInfo.InvariantCulture));
+        // RADAR_UI_HOVER=<пункт> — наведение на отметку события: всплывающая карточка (снимок для README)
+        if (Environment.GetEnvironmentVariable("RADAR_UI_HOVER") is { Length: > 0 } hov)
+        {
+            using (var pre = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(W, H))) pre.Render(host);
+            Console.WriteLine(w.Map.DebugHoverEvent(hov));
+        }
         // RADAR_UI_DRAG=<пункт>:<км>[:release] — перетаскивание края круга
         if (Environment.GetEnvironmentVariable("RADAR_UI_DRAG") is { Length: > 0 } dr && dr.Split(':') is [var dn, var dk, ..] dp)
         {

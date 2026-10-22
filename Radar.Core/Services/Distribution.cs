@@ -11,5 +11,5 @@ public static class Distribution
     /// <summary>Архив сообщений — отдельный релиз с постоянным тегом «archive», обновляется ежедневно.</summary>
     public const string ArchiveBaseUrl = RepoUrl + "/releases/download/archive/";
     public const string DonateUrl = "https://yoomoney.ru/fundraise/1KNOTETVTB3.261005";
-    public const string FeedbackUrl = "https://t.me/people_soft?direct";
+    public const string FeedbackUrl = "https://t.me/escorplab?direct";
 }
