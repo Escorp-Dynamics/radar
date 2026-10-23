@@ -84,7 +84,11 @@ public static class TelegramRoute
     /// повтор через рабочие прокси того же пула (они проверены на TLS-туннель, годятся не только для t.me).
     /// Ответ сервера с кодом (404, 403…) — не сбой сети, прокси не пробуется.
     /// </summary>
-    public static async Task<T> SendAsync<T>(HttpClient direct, Func<HttpClient, CancellationToken, Task<T>> op, CancellationToken ct)
+    public static Task<T> SendAsync<T>(HttpClient direct, Func<HttpClient, CancellationToken, Task<T>> op, CancellationToken ct) =>
+        SendAsync(direct, op, TimeSpan.FromMinutes(2), ct);
+
+    /// <param name="perAttempt">Предел одной попытки через прокси (загрузка пакета обновления — десятки мегабайт, ей нужно больше).</param>
+    public static async Task<T> SendAsync<T>(HttpClient direct, Func<HttpClient, CancellationToken, Task<T>> op, TimeSpan perAttempt, CancellationToken ct)
     {
         if (Mode != TelegramAccess.Proxy)
         {
@@ -105,7 +109,7 @@ public static class TelegramRoute
             try
             {
                 using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                limit.CancelAfter(TimeSpan.FromMinutes(2));
+                limit.CancelAfter(perAttempt);
                 return await op(route.Client, limit.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (IsNetworkFailure(ex, ct)) { last = ex; if (++route.Failures >= 2) Drop(route); }

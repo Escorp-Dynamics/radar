@@ -8,4 +8,8 @@
     <Company>Escorp Dynamics</Company>
     <Product>Радар</Product>
   </PropertyGroup>
+  <!-- релизная сборка CI (-p:RadarRelease=true) обновляет сама себя; локальная сборка разработчика — никогда -->
+  <PropertyGroup Condition="'$(RadarRelease)' == 'true'">
+    <DefineConstants>$(DefineConstants);RADAR_RELEASE</DefineConstants>
+  </PropertyGroup>
 </Project>

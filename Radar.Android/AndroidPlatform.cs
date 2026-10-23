@@ -79,6 +79,24 @@ public sealed class AndroidPlatform : IPlatformServices
         nm.Notify(Interlocked.Increment(ref _nextId), n);
     }
 
+    /// <summary>Уведомление, открывающее заданную активность (окно установки обновления).</summary>
+    public void NotifyAction(string title, string body, Intent target)
+    {
+        if (Manager is not { } nm) return;
+        if (OperatingSystem.IsAndroidVersionAtLeast(33) && _ctx.CheckSelfPermission(Manifest.Permission.PostNotifications) != Permission.Granted) return;
+        var pi = PendingIntent.GetActivity(_ctx, 2, target, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
+        var n = new Notification.Builder(_ctx, ServiceChannel)
+            .SetSmallIcon(Resource.Drawable.ic_notify)
+            .SetContentTitle(title)
+            .SetContentText(body)
+            .SetAutoCancel(true)
+            .SetContentIntent(pi)
+            .Build();
+        nm.Notify(UpdateNotificationId, n);
+    }
+
+    public const int UpdateNotificationId = 90;
+
     public void PlaySound(string wavPath)
     {
         try

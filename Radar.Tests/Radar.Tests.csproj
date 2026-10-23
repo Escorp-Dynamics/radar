@@ -12,6 +12,8 @@
   <ItemGroup>
     <Compile Include="../Radar.Core/Models/*.cs" Link="Src/Models/%(Filename)%(Extension)" />
     <Compile Include="../Radar.Core/Services/*.cs" Link="Src/Services/%(Filename)%(Extension)" />
+    <!-- замена файлов при автообновлении десктопа (без Avalonia) -->
+    <Compile Include="../Radar/Desktop/DesktopUpdater.cs" Link="Src/Desktop/DesktopUpdater.cs" />
     <EmbeddedResource Include="../Radar.Core/Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" WithCulture="false" />
     <EmbeddedResource Include="../Radar.Core/Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" WithCulture="false" Condition="Exists('../Radar.Core/Assets/routes.bin.gz')" />
     <EmbeddedResource Include="../Radar.Core/Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" WithCulture="false" Condition="Exists('../Radar.Core/Assets/roadgraph.bin.gz')" />

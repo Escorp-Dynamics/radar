@@ -10,6 +10,9 @@
     <!-- слежение после перезагрузки и без ограничений Doze (как у мессенджеров) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- автообновление: установка новой версии apk из релиза и (Android 12+) обновление без подтверждения -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <application android:label="Радар" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
                  android:supportsRtl="false" android:usesCleartextTraffic="false" android:resizeableActivity="true" />
 </manifest>

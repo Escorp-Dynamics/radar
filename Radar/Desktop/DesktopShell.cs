@@ -13,7 +13,8 @@ public static class DesktopShell
         // замеры и демо-сценарии идут без трея и без защиты от второго экземпляра
         bool service = Environment.GetEnvironmentVariable("RADAR_DEMO") == "1" || Environment.GetEnvironmentVariable("RADAR_IDLE_CORPUS") is { Length: > 0 };
         bool autostart = Environment.GetCommandLineArgs().Contains(Autostart.Flag);
-        bool hidden = !service && autostart && settings.StartWithSystem && settings.StartMinimized;
+        // после обновления из трея окно остаётся скрытым, как было до перезапуска
+        bool hidden = !service && (autostart && settings.StartWithSystem && settings.StartMinimized || Environment.GetCommandLineArgs().Contains(DesktopUpdater.HiddenFlag));
         if (service) { desktop.MainWindow = window; return true; }
         TrayController? tray = null;
         // второй запуск будит первый и завершается: окно в трее иначе не достать, а копии дублировали бы опрос каналов
@@ -34,7 +35,27 @@ public static class DesktopShell
             window.Hide();
         };
         window.Closed += (_, _) => desktop.Shutdown();
-        desktop.Exit += (_, _) => SingleInstance.Release();
+        bool restart = false, restartVisible = false;
+        desktop.Exit += (_, _) =>
+        {
+            SingleInstance.Release();
+            // новая версия ждёт выхода этого процесса (DesktopUpdater.AwaitPrevious) и сразу берёт «один экземпляр»
+            if (restart)
+                try { DesktopUpdater.StartNewInstance(restartVisible ? [] : [DesktopUpdater.HiddenFlag]); }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { System.Diagnostics.Trace.WriteLine($"перезапуск: {ex.Message}"); }
+        };
+        void Restart()
+        {
+            if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) { Avalonia.Threading.Dispatcher.UIThread.Post(Restart); return; }
+            restart = true;
+            // к моменту Exit окно уже закрыто — видимость запоминается сейчас
+            restartVisible = window.IsVisible;
+            window.SaveState();
+            tray.Exit();
+        }
+        Updater.Restart = Restart;
+        // окно спрятано в трей — перезапуск пользователь не заметит; открытое окно не закрываем без спроса
+        Updater.RestartIfIdle = () => { if (window.IsVisible) return false; Restart(); return true; };
         // свёрнутый запуск: главное окно не назначается (его показ — часть старта), оно откроется из трея
         desktop.MainWindow = hidden ? null : window;
         return true;

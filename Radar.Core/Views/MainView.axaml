@@ -2765,6 +2765,12 @@
                                     <Button Classes="sbtn amber" Click="DownloadUpdateClick" IsVisible="{Binding HasUpdate}">
                                         <TextBlock Text="СКАЧАТЬ" />
                                     </Button>
+                                    <Button Classes="sbtn amber" Click="InstallUpdateClick" IsVisible="{Binding CanInstallUpdate}" IsEnabled="{Binding !CheckingUpdates}">
+                                        <TextBlock Text="ОБНОВИТЬ" />
+                                    </Button>
+                                    <Button Classes="sbtn amber" Click="RestartUpdateClick" IsVisible="{Binding UpdateReady}">
+                                        <TextBlock Text="ПЕРЕЗАПУСТИТЬ" />
+                                    </Button>
                                     <Button Classes="sbtn" Click="CheckUpdatesClick" IsEnabled="{Binding !CheckingUpdates}">
                                         <TextBlock Text="ПРОВЕРИТЬ" />
                                     </Button>
@@ -2773,6 +2779,10 @@
                             <Grid Classes="srow" ColumnDefinitions="*,Auto">
                                 <StackPanel><TextBlock Classes="sname" Text="Проверять при запуске" /><TextBlock Classes="shint" Text="Сообщать о новой версии, когда она выйдет" /></StackPanel>
                                 <ToggleButton Grid.Column="1" Classes="chsw" AutomationProperties.Name="Проверять при запуске" IsChecked="{Binding CheckUpdates}" />
+                            </Grid>
+                            <Grid Classes="srow" ColumnDefinitions="*,Auto" IsVisible="{Binding CanAutoUpdate}">
+                                <StackPanel><TextBlock Classes="sname" Text="Обновлять автоматически" /><TextBlock Classes="shint" Text="Скачивать и ставить новую версию самому — без ручной переустановки" /></StackPanel>
+                                <ToggleButton Grid.Column="1" Classes="chsw" AutomationProperties.Name="Обновлять автоматически" IsChecked="{Binding AutoUpdate}" IsEnabled="{Binding CheckUpdates}" />
                             </Grid>
                             <Grid Classes="srow" ColumnDefinitions="*,Auto">
                                 <StackPanel><TextBlock Classes="sname" Text="Архив сообщений" /><TextBlock Classes="shint" Text="{Binding ArchiveSyncText}" /></StackPanel>

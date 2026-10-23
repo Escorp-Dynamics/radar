@@ -23,6 +23,7 @@ public sealed class MainApplication : AvaloniaAndroidApplication<App>
         var services = new AndroidPlatform(this);
         App.Platform = services;
         Radar.Services.Notifier.Platform = services;
+        Radar.Services.Updater.Installer = new AndroidUpdater(this);
         base.OnCreate();
     }
 

@@ -14,6 +14,8 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // перезапуск после установки обновления: дождаться выхода прежней версии (она держит «один экземпляр»)
+        args = Radar.Desktop.DesktopUpdater.AwaitPrevious(args);
         // командные утилиты архива: повреждённый пакет или неверный месяц — понятное сообщение, а не стек вызовов
         if (args.Length >= 1 && args[0].StartsWith("--archive-", StringComparison.Ordinal))
         {
@@ -183,6 +185,9 @@ internal static class Program
         Radar.Services.PlaceIndex.Preload();
         Radar.Services.RouteNetwork.Preload();
         Radar.Services.RoadGraph.Preload();
+        var updater = new Radar.Desktop.DesktopUpdater();
+        updater.CleanupOld();
+        Radar.Services.Updater.Installer = updater;
         App.DesktopShell = Radar.Desktop.DesktopShell.Install;
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

@@ -1427,6 +1427,10 @@ public partial class MainView : UserControl
     private void CheckUpdatesClick(object? sender, RoutedEventArgs e) => _vm?.CheckForUpdates();
     private void OpenDataFolderClick(object? sender, RoutedEventArgs e) => _vm?.OpenDataFolder();
     private void DownloadUpdateClick(object? sender, RoutedEventArgs e) => _vm?.OpenUpdate();
+
+    private void InstallUpdateClick(object? sender, RoutedEventArgs e) => _vm?.InstallUpdate();
+
+    private void RestartUpdateClick(object? sender, RoutedEventArgs e) => _vm?.RestartForUpdate();
     private void SyncArchiveClick(object? sender, RoutedEventArgs e) => _ = _vm?.SyncArchiveAsync();
     private void CastClick(object? sender, RoutedEventArgs e) => _vm?.OpenCastSettings();
     private void DonateClick(object? sender, RoutedEventArgs e) => _vm?.OpenDonate();

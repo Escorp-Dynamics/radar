@@ -56,7 +56,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.x' }
       - name: publish (NativeAOT)
-        run: dotnet publish Radar/Radar.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version=${{ needs.version.outputs.version }}
+        run: dotnet publish Radar/Radar.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version=${{ needs.version.outputs.version }} -p:RadarRelease=true
       - name: package (linux)
         if: runner.os == 'Linux'
         run: |
@@ -127,6 +127,7 @@ jobs:
         run: >
           dotnet publish Radar.Android/Radar.Android.csproj -c Release -o out
           -p:Version=${{ needs.version.outputs.version }}
+          -p:RadarRelease=true
           -p:ApplicationVersion=${{ github.run_number }}
           -p:AndroidSdkDirectory=$ANDROID_SDK_ROOT
       - run: cp "$(ls out/*-Signed.apk | head -1)" Radar-${{ needs.version.outputs.version }}.apk
@@ -140,8 +141,14 @@ jobs:
     needs: [version, desktop, android]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { path: dist, merge-multiple: true }
+      # манифест автообновления: приложение ставит файл, только если подпись и SHA-256 совпали
+      - name: sign update manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: python3 tools/release/sign_update.py "${{ needs.version.outputs.version }}" dist
       - name: publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -166,7 +173,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.x' }
       - name: publish (NativeAOT)
-        run: dotnet publish Radar/Radar.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version=${{ needs.version.outputs.version }}
+        run: dotnet publish Radar/Radar.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version=${{ needs.version.outputs.version }} -p:RadarRelease=true
       - name: package (linux)
         if: runner.os == 'Linux'
         run: |
@@ -209,3 +216,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "v${{ needs.version.outputs.version }}" Radar-*.zip --repo "$GITHUB_REPOSITORY" --clobber
+
+  # обе macOS-сборки — в свой подписанный манифест (одним заданием, после обеих); общий update.json не трогается
+  macos-manifest:
+    needs: [version, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: sign update manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir dist
+          gh release download "v$V" --repo "$GITHUB_REPOSITORY" --pattern "Radar-$V-osx-*.zip" --dir dist
+          python3 tools/release/sign_update.py "$V" dist update-osx.json
+          # подпись — первой: пока манифеста нет, клиент считает сборку ещё не выложенной и не видит пару вразнобой
+          if [ -f dist/update-osx.json ]; then
+            gh release upload "v$V" dist/update-osx.json.sig --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "v$V" dist/update-osx.json --repo "$GITHUB_REPOSITORY" --clobber
+          fi

@@ -26,7 +26,7 @@ public static class UpdateChecker
         // при сетевом сбое — повтор через ротатор прокси
         TelegramRoute.SendAsync(http, async (c, t) =>
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, Distribution.LatestReleaseApi);
+            using var req = new HttpRequestMessage(HttpMethod.Get, ReleaseApi);
             req.Headers.TryAddWithoutValidation("User-Agent", UserAgent.Value);
             req.Headers.TryAddWithoutValidation("Accept", "application/vnd.github+json");
             using var resp = await c.SendAsync(req, t);
@@ -34,6 +34,10 @@ public static class UpdateChecker
             resp.EnsureSuccessStatusCode();
             return JsonSerializer.Deserialize(await resp.Content.ReadAsByteArrayAsync(t), ReleaseJsonContext.Default.GitHubRelease);
         }, ct);
+
+    /// <summary>Адрес последнего релиза; RADAR_UPDATE_API — свой (проверка автообновления на локальном сервере).</summary>
+    public static string ReleaseApi =>
+        Environment.GetEnvironmentVariable("RADAR_UPDATE_API") is { Length: > 0 } u ? u : Distribution.LatestReleaseApi;
 
     /// <summary>Номер версии из тега («v1.2.3» → 1.2.3); не версия — null.</summary>
     public static Version? Parse(string tag) =>

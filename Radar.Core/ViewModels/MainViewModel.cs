@@ -1079,9 +1079,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _live.Start();
         _ = SyncArchiveAsync();
+        Updater.ExternalStatus += OnInstallerStatus;
         if (Settings.CheckUpdates) CheckForUpdates(silent: true);
         // архив в релизе обновляется ежедневно — долго открытое приложение подтягивает его само
         DispatcherTimer.Run(() => { _ = SyncArchiveAsync(); return true; }, TimeSpan.FromHours(6));
+        // приложение в трее живёт неделями: новая версия ищется и без перезапуска
+        DispatcherTimer.Run(() => { if (Settings.CheckUpdates) CheckForUpdates(silent: true); return true; }, TimeSpan.FromHours(6));
         if (Environment.GetEnvironmentVariable("RADAR_REPLAY") == "1" || Environment.GetCommandLineArgs().Contains("--replay"))
             Mode = AppMode.History;
     }
@@ -1218,6 +1221,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (_engine != _live) _engine.Dispose();
         _live.Dispose();
         TelegramRoute.StatusChanged -= _routeChanged;
+        Updater.ExternalStatus -= OnInstallerStatus;
         _http.Dispose();
         SettingsStore.Save(Settings);
     }
@@ -2116,29 +2120,56 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool CheckingUpdates { get => _checkingUpdates; private set => Set(ref _checkingUpdates, value); }
 
     private string? _updateUrl;
-    /// <summary>Найдена новая версия: кнопка «Скачать» ведёт на её файл (или страницу релиза).</summary>
-    public bool HasUpdate => _updateUrl != null;
+    private GitHubRelease? _updateRelease;
+    private string? _installedTag;
+    private bool _awaitingInstall;
+    /// <summary>В релизе ещё нет подписанного пакета под эту систему — только ссылка на скачивание.</summary>
+    private bool _noPackage;
+    /// <summary>Найдена новая версия, а поставить её само приложение не может: кнопка «Скачать» ведёт на её файл (или страницу релиза).</summary>
+    public bool HasUpdate => _updateUrl != null && !CanInstallUpdate && !UpdateReady && !_awaitingInstall;
+    /// <summary>Найдена новая версия, и её можно поставить отсюда (кнопка «Обновить»).</summary>
+    public bool CanInstallUpdate => _updateRelease != null && !_noPackage && Updater.Installer?.Unavailable == null && !UpdateReady && !_awaitingInstall;
+    /// <summary>Новая версия установлена и начнёт работать после перезапуска (кнопка «Перезапустить»).</summary>
+    public bool UpdateReady => _installedTag != null && Updater.Restart != null;
 
-    /// <summary>Проверка новой версии по последнему релизу на GitHub; <paramref name="silent"/> — при запуске, без сообщений об ошибках.</summary>
+    public bool AutoUpdate { get => Settings.AutoUpdate; set { if (Settings.AutoUpdate == value) return; Settings.AutoUpdate = value; SaveSetting(); } }
+    /// <summary>Устройство ставит обновления само (десктоп с правами на папку программы, Android); иначе переключатель скрыт.</summary>
+    public bool CanAutoUpdate => Updater.Installer?.Unavailable == null;
+
+    private void UpdateButtonsChanged()
+    {
+        OnChanged(nameof(HasUpdate));
+        OnChanged(nameof(CanInstallUpdate));
+        OnChanged(nameof(UpdateReady));
+    }
+
+    /// <summary>Проверка новой версии по последнему релизу на GitHub; <paramref name="silent"/> — при запуске, без сообщений об ошибках.
+    /// С включённым автообновлением найденная версия сразу скачивается и ставится.</summary>
     public async void CheckForUpdates(bool silent = false)
     {
-        if (CheckingUpdates) return;
+        if (CheckingUpdates || UpdateReady) return;
         CheckingUpdates = true;
         if (!silent) UpdateCheckText = "Проверка…";
+        bool install = false;
         try
         {
-            var current = typeof(MainViewModel).Assembly.GetName().Version ?? new Version(1, 0, 0);
             var rel = await UpdateChecker.LatestAsync(_http, CancellationToken.None);
-            if (rel != null && UpdateChecker.IsNewer(rel.Tag, current))
+            if (rel != null && UpdateChecker.IsNewer(rel.Tag, Updater.CurrentVersion))
             {
+                _noPackage = false;
+                _updateRelease = rel;
                 _updateUrl = UpdateChecker.AssetFor(rel)?.Url ?? rel.Page;
                 UpdateCheckText = $"Доступна версия {rel.Tag}";
-                if (silent && Settings.Notifications) Notifier.Notify("Доступно обновление Радара", $"Версия {rel.Tag} — скачать во вкладке «Настройки».", urgent: false);
+                install = Settings.AutoUpdate && CanInstallUpdate && Updater.Installer?.CanInstallUnattended == true;
+                if (silent && !install && Settings.Notifications)
+                    Notifier.Notify("Доступно обновление Радара", $"Версия {rel.Tag} — {(CanInstallUpdate ? "обновить" : "скачать")} во вкладке «Настройки».", urgent: false);
             }
             else
             {
+                _updateRelease = null;
                 _updateUrl = null;
                 UpdateCheckText = $"Установлена последняя версия · {DateTime.Now:HH:mm}";
+                Updater.ClearDownloads();
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
@@ -2147,10 +2178,83 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         finally
         {
-            OnChanged(nameof(HasUpdate));
+            UpdateButtonsChanged();
             CheckingUpdates = false;
         }
+        if (install) InstallUpdate(auto: true);
     }
+
+    /// <summary>
+    /// Скачать новую версию, проверить подпись и контрольную сумму и установить. Десктоп: файлы заменяются на месте,
+    /// перезапуск — кнопкой (или сразу, если окно спрятано в трее). Android: система показывает окно установки.
+    /// </summary>
+    public async void InstallUpdate(bool auto = false)
+    {
+        if (CheckingUpdates || _updateRelease is not { } rel || Updater.Installer is not { } installer) return;
+        CheckingUpdates = true;
+        UpdateButtonsChanged();
+        try
+        {
+            UpdateCheckText = $"Загрузка {rel.Tag}…";
+            if (await Updater.PlanAsync(_http, rel, CancellationToken.None) is not { } plan)
+            {
+                // сборка под эту систему ещё не выложена (macOS дописывается позже) — повтор при следующей проверке
+                _noPackage = true;
+                UpdateCheckText = $"Доступна версия {rel.Tag}";
+                return;
+            }
+            using var http = Updater.CreateDownloadClient();
+            int shown = -1;
+            var progress = new Progress<double>(p =>
+            {
+                int pct = (int)(p * 100);
+                if (pct == shown) return;
+                shown = pct;
+                UpdateCheckText = $"Загрузка {rel.Tag} · {pct}%";
+            });
+            var file = await Updater.DownloadAsync(http, plan, progress, CancellationToken.None);
+            UpdateCheckText = $"Установка {rel.Tag}…";
+            var result = await installer.InstallAsync(file, CancellationToken.None);
+            if (result == UpdateInstall.AwaitingUser)
+            {
+                _awaitingInstall = true;
+                UpdateCheckText = $"Подтвердите установку {rel.Tag}";
+                return;
+            }
+            _installedTag = rel.Tag;
+            UpdateCheckText = $"Версия {rel.Tag} установлена — начнёт работать после перезапуска";
+            // окно в трее: перезапуск незаметен; открытое окно ждёт кнопки «Перезапустить» (или следующего запуска)
+            if (auto && Updater.RestartIfIdle?.Invoke() == true) return;
+            if (auto && Settings.Notifications)
+                Notifier.Notify("Радар обновлён", $"Версия {rel.Tag} начнёт работать после перезапуска.", urgent: false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException
+                                       or InvalidDataException or InvalidOperationException or System.Text.Json.JsonException
+                                       or System.Security.Cryptography.CryptographicException or NotSupportedException)
+        {
+            UpdateCheckText = $"Обновление не установлено: {ex.Message}";
+            System.Diagnostics.Trace.WriteLine($"обновление: {ex}");
+        }
+        finally
+        {
+            CheckingUpdates = false;
+            UpdateButtonsChanged();
+        }
+    }
+
+    private void OnInstallerStatus(string text, bool failed)
+    {
+        void Apply()
+        {
+            _awaitingInstall = false;
+            UpdateCheckText = text;
+            UpdateButtonsChanged();
+        }
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) Apply();
+        else Avalonia.Threading.Dispatcher.UIThread.Post(Apply);
+    }
+
+    public void RestartForUpdate() => Updater.Restart?.Invoke();
 
     /// <summary>Ссылка, которую представление открывает во внешнем приложении (браузер, Telegram).</summary>
     public event Action<Uri>? OpenLinkRequested;

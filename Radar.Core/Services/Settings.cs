@@ -136,6 +136,8 @@ public sealed class AppSettings
     public bool BackgroundWatch { get; set; } = true;
     /// <summary>Проверять обновления при запуске.</summary>
     public bool CheckUpdates { get; set; } = true;
+    /// <summary>Скачивать и ставить найденное обновление самостоятельно (новая версия — после перезапуска).</summary>
+    public bool AutoUpdate { get; set; } = true;
     public List<ChannelConfig> Channels { get; set; } = DefaultChannels();
     /// <summary>
     /// Каналы из списка по умолчанию, которые уже предлагались (чтобы новые добавлялись при обновлении, а удалённые не возвращались).
