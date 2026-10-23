@@ -8,6 +8,8 @@
     <RootNamespace>Radar</RootNamespace>
     <AssemblyName>Radar</AssemblyName>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- иконка файла Radar.exe в Проводнике и на панели задач (окну иконку задаёт App из radar.png); radar.ico собран из Radar.Core/Assets/radar.png -->
+    <ApplicationIcon>radar.ico</ApplicationIcon>
 
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
