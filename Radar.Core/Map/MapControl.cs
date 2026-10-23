@@ -4192,7 +4192,8 @@ public sealed class MapControl : Control
 
     /// <summary>
     /// Возможные направления пуска: по одному лучу на каждый из 8 секторов (С, СВ, В, …) — к ближайшему
-    /// региону РФ в этом секторе (по ближайшей точке контура, не дальше дальности предполагаемого средства).
+    /// региону РФ в этом секторе (по ближайшей точке контура, не дальше дальности предполагаемого средства
+    /// и не намного дальше ближайшего региона вообще — <see cref="LaunchTargets.WithinReach"/>).
     /// </summary>
     private FanRay[] LaunchFan(GeoPoint o, double maxKm)
     {
@@ -4237,7 +4238,8 @@ public sealed class MapControl : Control
             int sector = (int)Math.Round(bearing / 45) % 8;
             if (best[sector] is not { } b || km < b.Km) best[sector] = (km, bearing, reg.Name);
         }
-        var rays = best.Where(b => b != null).Select(b => new FanRay(b!.Value.Bearing, b.Value.Km, b.Value.Name)).ToArray();
+        var found = best.Where(b => b != null).Select(b => new FanRay(b!.Value.Bearing, b.Value.Km, b.Value.Name)).ToList();
+        var rays = LaunchTargets.WithinReach(found, r => r.Km).ToArray();
         if (_fanCache.Count > 256) _fanCache.Clear();
         _fanCache[key] = rays;
         return rays;

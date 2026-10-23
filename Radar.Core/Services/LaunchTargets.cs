@@ -40,6 +40,21 @@ public static class LaunchTargets
         return best is { } r ? (r, bestKm) : null;
     }
 
+    /// <summary>
+    /// Запас к расстоянию до ближайшего региона, км: веер показывает, куда пуск может быть направлен поблизости.
+    /// Одна дальность средства (дальний БПЛА — до 1500 км) пропускала бы по лучу в каждый сектор — из Одессы
+    /// к Брянской и Белгородской областям через всю Украину, хотя Херсонская и Крым в разы ближе.
+    /// </summary>
+    public const double FanSlackKm = 150;
+
+    /// <summary>Направления веера: не дальше ближайшего региона плюс <see cref="FanSlackKm"/>.</summary>
+    public static IEnumerable<T> WithinReach<T>(IReadOnlyCollection<T> rays, Func<T, double> km, double slackKm = FanSlackKm)
+    {
+        if (rays.Count == 0) return [];
+        double limit = rays.Min(km) + slackKm;
+        return rays.Where(r => km(r) <= limit);
+    }
+
     /// <summary>Ломаная, пересэмплированная с шагом <paramref name="stepKm"/> (для точек линии соприкосновения).</summary>
     public static IEnumerable<GeoPoint> Sample(IReadOnlyList<GeoPoint> line, double stepKm = 6)
     {

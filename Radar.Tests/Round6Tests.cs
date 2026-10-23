@@ -348,6 +348,18 @@ public class Round6Tests
     public void LaunchTargetNoneWhenNothingAllowed() =>
         Assert.Null(LaunchTargets.Nearest(new GeoPoint(5, 5), [new GeoPoint[] { new(0, 0), new(0, 10), new(10, 10) }], [], _ => false));
 
+    [Fact]
+    public void LaunchFanSkipsRegionsAcrossTheCountry()
+    {
+        // пуск БПЛА из Одессы: ближайшие регионы РФ по секторам (км до контура) — Херсонская рядом, Брянская и Белгородская через всю Украину
+        (string Name, double Km)[] sectors = [("Херсонская", 71), ("Запорожская", 278), ("Белгородская", 562), ("Брянская", 640)];
+        var shown = LaunchTargets.WithinReach(sectors, s => s.Km).Select(s => s.Name).ToList();
+        Assert.Equal(["Херсонская"], shown);
+        // пуск из Сум: Курская и Белгородская обе рядом — веер на обе
+        Assert.Equal(2, LaunchTargets.WithinReach([("Курская", 30.0), ("Белгородская", 34.0), ("Липецкая", 238.0)], s => s.Item2).Count());
+        Assert.Empty(LaunchTargets.WithinReach(Array.Empty<(string, double)>(), s => s.Item2));
+    }
+
     [Theory]
     [InlineData(150, 130, 0.9, 3.4)]   // круто изогнутая дуга: внутренняя сторона заметно короче
     [InlineData(300, 130, 0.5, 2.6)]
