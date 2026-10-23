@@ -15,13 +15,23 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets/Fonts/*.ttf" />
     <AvaloniaResource Include="Assets/radar.png" />
-    <EmbeddedResource Include="Assets/basemap.bin.gz" LogicalName="Radar.basemap.bin.gz" />
-    <EmbeddedResource Include="Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" />
-    <EmbeddedResource Include="Assets/labels.bin.gz" LogicalName="Radar.labels.bin.gz" />
-    <EmbeddedResource Include="Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" Condition="Exists('Assets/routes.bin.gz')" />
-    <EmbeddedResource Include="Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" Condition="Exists('Assets/roadgraph.bin.gz')" />
-    <EmbeddedResource Include="Assets/replay.tsv.gz" LogicalName="Radar.replay.tsv.gz" />
+    <!--
+      WithCulture="false": иначе MSBuild принимает «.bin» в «basemap.bin.gz» за код культуры (бини) — на Windows такая культура есть,
+      и ресурс уезжает в сателлит bin/Radar.Core.resources.dll, а GetManifestResourceStream в основной сборке возвращает null
+    -->
+    <EmbeddedResource Include="Assets/basemap.bin.gz" LogicalName="Radar.basemap.bin.gz" WithCulture="false" />
+    <EmbeddedResource Include="Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" WithCulture="false" />
+    <EmbeddedResource Include="Assets/labels.bin.gz" LogicalName="Radar.labels.bin.gz" WithCulture="false" />
+    <EmbeddedResource Include="Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" WithCulture="false" Condition="Exists('Assets/routes.bin.gz')" />
+    <EmbeddedResource Include="Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" WithCulture="false" Condition="Exists('Assets/roadgraph.bin.gz')" />
+    <EmbeddedResource Include="Assets/replay.tsv.gz" LogicalName="Radar.replay.tsv.gz" WithCulture="false" />
   </ItemGroup>
+
+  <!-- Локализованных ресурсов в приложении нет: ресурс в сателлитной сборке — ошибка сборки, а не падение на старте у клиента -->
+  <Target Name="RadarNoSatelliteResources" AfterTargets="SplitResourcesByCulture">
+    <Error Condition="'@(EmbeddedResource->WithMetadataValue('WithCulture','true'))' != ''"
+           Text="Ресурс принят за локализованный и уйдёт в сателлитную сборку: @(EmbeddedResource->WithMetadataValue('WithCulture','true')). Добавьте WithCulture=&quot;false&quot;." />
+  </Target>
 
   <!--
     Отпечаток движка для кеша статистики архива: git-деревья кода разбора и движка (+ незакоммиченные правки в них).

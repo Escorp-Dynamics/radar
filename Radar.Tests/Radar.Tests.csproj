@@ -12,10 +12,10 @@
   <ItemGroup>
     <Compile Include="../Radar.Core/Models/*.cs" Link="Src/Models/%(Filename)%(Extension)" />
     <Compile Include="../Radar.Core/Services/*.cs" Link="Src/Services/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../Radar.Core/Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" />
-    <EmbeddedResource Include="../Radar.Core/Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" Condition="Exists('../Radar.Core/Assets/routes.bin.gz')" />
-    <EmbeddedResource Include="../Radar.Core/Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" Condition="Exists('../Radar.Core/Assets/roadgraph.bin.gz')" />
-    <EmbeddedResource Include="../Radar.Core/Assets/basemap.bin.gz" LogicalName="Radar.basemap.bin.gz" />
+    <EmbeddedResource Include="../Radar.Core/Assets/places.tsv.gz" LogicalName="Radar.places.tsv.gz" WithCulture="false" />
+    <EmbeddedResource Include="../Radar.Core/Assets/routes.bin.gz" LogicalName="Radar.routes.bin.gz" WithCulture="false" Condition="Exists('../Radar.Core/Assets/routes.bin.gz')" />
+    <EmbeddedResource Include="../Radar.Core/Assets/roadgraph.bin.gz" LogicalName="Radar.roadgraph.bin.gz" WithCulture="false" Condition="Exists('../Radar.Core/Assets/roadgraph.bin.gz')" />
+    <EmbeddedResource Include="../Radar.Core/Assets/basemap.bin.gz" LogicalName="Radar.basemap.bin.gz" WithCulture="false" />
     <!-- срез открытых данных DeepStateMap (полигоны «окуповано», упрощены) — проверка извлечения линии соприкосновения -->
     <None Include="Data/front_sample.json" CopyToOutputDirectory="PreserveNewest" />
     <!-- 12 сообщений архива — офлайн-снимок окна (UiSnapshotTests) -->
